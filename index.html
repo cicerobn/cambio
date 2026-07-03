@@ -1442,13 +1442,19 @@
       if(row && Number(row.rate)>0){ cfg.rBRL=Number(row.rate); if(row.updated_at) cfg.updated=fmtUpdFromISO(row.updated_at); saveCfg(); buildTaxList(); calc(); }
     }catch(e){ console.error("cotacaoPull",e); }
   }
+  // ---- sessão expirada: detecta, renova sozinho e, se não der, pede login ----
+  function cfIsAuthErr(e){ var m=((e&&(e.message||e.msg||e.details))||"")+""; var c=String((e&&e.code)||""); return c==="PGRST301"||c==="401"||c==="42501"||/jwt|token|expired|not authenticated|unauthor|permission denied|invalid.*claim/i.test(m); }
+  async function cfRefreshSession(){ if(!cfReady()) return false; try{ var r=await cfsb.auth.getSession(); if(r&&r.data&&r.data.session){ cfUser=r.data.session.user; cfBadge(); return true; } var rf=await cfsb.auth.refreshSession(); if(rf&&rf.data&&rf.data.session){ cfUser=rf.data.session.user; cfBadge(); return true; } }catch(_){}; return false; }
+  async function cfSessionExpired(){ try{ await cfsb.auth.signOut(); }catch(_){}; cfUser=null; try{ cfBadge(); renderPedidos(); }catch(_){}; alert("Sua sessão na nuvem expirou. Faça o login de novo pra continuar."); try{ cfOpenLogin(); }catch(_){}; }
   async function cfCotacaoPush(){
     if(!cfReady()||!cfUser) return false;
     try{
-      var res=await cfsb.from("cambio_cotacao").upsert({id:1,rate:cfg.rBRL,updated_at:new Date().toISOString()},{onConflict:"id"});
+      var pl={id:1,rate:cfg.rBRL,updated_at:new Date().toISOString()};
+      var res=await cfsb.from("cambio_cotacao").upsert(pl,{onConflict:"id"});
+      if(res.error && cfIsAuthErr(res.error) && await cfRefreshSession()){ res=await cfsb.from("cambio_cotacao").upsert(pl,{onConflict:"id"}); }
       if(res.error) throw res.error;
       return true;
-    }catch(e){ console.error("cotacaoPush",e); alert("Cotação salva localmente, mas falhou ao enviar à nuvem."); return false; }
+    }catch(e){ console.error("cotacaoPush",e); if(cfIsAuthErr(e)){ cfSessionExpired(); } else { alert("Cotação salva localmente, mas falhou ao enviar à nuvem."); } return false; }
   }
 
   // ---- config geral (pontos de retirada, delivery, taxas) — leitura pública, escrita exige login ----
@@ -1465,10 +1471,12 @@
     if(!cfReady()||!cfUser) return false;
     try{
       // inclui rate + updated_at: a coluna 'rate' é NOT NULL; sem ela o upsert falha e o config NÃO grava
-      var res=await cfsb.from("cambio_cotacao").upsert({id:1, rate:Number(cfg.rBRL)||0, updated_at:new Date().toISOString(), config:cfConfigPayload()},{onConflict:"id"});
+      var pl={id:1, rate:Number(cfg.rBRL)||0, updated_at:new Date().toISOString(), config:cfConfigPayload()};
+      var res=await cfsb.from("cambio_cotacao").upsert(pl,{onConflict:"id"});
+      if(res.error && cfIsAuthErr(res.error) && await cfRefreshSession()){ res=await cfsb.from("cambio_cotacao").upsert(pl,{onConflict:"id"}); }
       if(res.error) throw res.error;
       return true;
-    }catch(e){ console.error("configPush",e); var m=((e&&(e.message||e.details))||"")+""; if(/config/i.test(m) && /(does not exist|schema cache|could not find)/i.test(m)){ alert("Falta criar a coluna 'config' no Supabase. Rode no SQL Editor:\n\nalter table public.cambio_cotacao add column if not exists config jsonb not null default '{}'::jsonb;"); } else { alert("Não consegui salvar as configurações na nuvem. Confira se você está logado na nuvem (selo no topo do painel) e tente de novo."); } return false; }
+    }catch(e){ console.error("configPush",e); var m=((e&&(e.message||e.details))||"")+""; if(/config/i.test(m) && /(does not exist|schema cache|could not find)/i.test(m)){ alert("Falta criar a coluna 'config' no Supabase. Rode no SQL Editor:\n\nalter table public.cambio_cotacao add column if not exists config jsonb not null default '{}'::jsonb;"); } else if(cfIsAuthErr(e)){ cfSessionExpired(); } else { alert("Não consegui salvar as configurações na nuvem. Tente de novo."); } return false; }
   }
   async function cfConfigPull(){
     if(!cfReady()) return;
@@ -1523,7 +1531,7 @@
   // ===== pedidos na nuvem (cambio_pedidos): cliente cria (anon), cambista gerencia (login) =====
   function pedidoToRow(p){ return { id:p.id, cliente:p.cliente||null, valor_reais:Number(p.valor_reais)||0, cotacao:Number(p.cotacao)||null, total_guarani:Number(p.total_guarani)||0, taxa_reais:Number(p.taxa_reais)||0, status:p.status||"pendente", observacao:p.observacao||null, created_at:p.created_at||new Date().toISOString() }; }
   function rowToPedido(r){ return { id:r.id, cliente:r.cliente||"", valor_reais:Number(r.valor_reais)||0, cotacao:Number(r.cotacao)||0, total_guarani:Number(r.total_guarani)||0, taxa_reais:Number(r.taxa_reais)||0, status:r.status||"pendente", observacao:r.observacao||"", created_at:r.created_at }; }
-  async function cfPedidoCloudInsert(p){ if(!cfReady()) return false; try{ var res=await cfsb.from("cambio_pedidos").insert(pedidoToRow(p)); if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoInsert",e); return false; } }
+  async function cfPedidoCloudInsert(p){ if(!cfReady()) return false; try{ var row=pedidoToRow(p); var res=await cfsb.from("cambio_pedidos").insert(row); if(res.error && cfIsAuthErr(res.error) && await cfRefreshSession()){ res=await cfsb.from("cambio_pedidos").insert(row); } if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoInsert",e); return false; } }
   async function cfPedidoCloudStatus(id,status){ if(!cfReady()||!cfUser) return false; try{ var res=await cfsb.from("cambio_pedidos").update({status:status}).eq("id",id); if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoStatus",e); return false; } }
   async function cfPedidoCloudDelete(id){ if(!cfReady()||!cfUser) return false; try{ var res=await cfsb.from("cambio_pedidos").delete().eq("id",id); if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoDelete",e); return false; } }
   async function cfPedidosPull(){

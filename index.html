@@ -1074,7 +1074,7 @@
     h+=prow("Data e horário", fmtDateTime(p.created_at));
     if(p.status==="pendente") h+='<div class="pc-actions"><button class="btn-apr" data-id="'+p.id+'">Aprovar</button><button class="btn-desc" data-id="'+p.id+'">Descartar</button></div>';
     else if(p.status==="aprovado") h+='<div class="pc-actions"><button class="btn-del" data-id="'+p.id+'">Excluir</button></div>';
-    else if(p.status==="descartado") h+='<div class="pc-actions"><button class="btn-rest" data-id="'+p.id+'">Restaurar</button></div>';
+    else if(p.status==="descartado") h+='<div class="pc-actions"><button class="btn-rest" data-id="'+p.id+'">Restaurar</button><button class="btn-del" data-id="'+p.id+'">Excluir</button></div>';
     h+='</div>';
     return h;
   }

@@ -7,6 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Câmbio Figueredo — Segurança, transparência e a melhor cotação</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="favicon.svg">
+<link rel="mask-icon" href="favicon.svg" color="#c79a3a">
 <link rel="preconnect" href="https://fonts.googleapis.com/">
 <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="">
 <link href="file:///C:/Users/USER/Documents/Medgroup/C%C3%A2mbio%20Figueredo%20%E2%80%94%20Seguran%C3%A7a,%20transpar%C3%AAncia%20e%20a%20melhor%20cota%C3%A7%C3%A3o_files/css2" rel="stylesheet">
@@ -488,6 +491,16 @@
       <p class="sub">Sem surpresa na hora de pagar!</p>
     </header>
 
+    <!-- ===== AVISO (banner editável no painel) ===== -->
+    <div class="cf-aviso" id="cfAviso" style="display:none">
+      <span class="cf-aviso-ic" id="cfAvisoIc"></span>
+      <div class="cf-aviso-body">
+        <div class="cf-aviso-title">Aviso importante</div>
+        <div class="cf-aviso-txt" id="cfAvisoTxt"></div>
+      </div>
+      <button type="button" class="cf-aviso-x" id="cfAvisoX" aria-label="Fechar aviso">×</button>
+    </div>
+
     <!-- ===== CARD ===== -->
     <section class="card">
       <div class="card-top">
@@ -669,6 +682,16 @@
         </div>
 
         <div id="tabConfig" style="display:none">
+          <div class="adm-sec">Aviso no site</div>
+          <div class="adm-hint">Mostra uma faixa no topo do site para todos os clientes (ex.: muita demanda, chuva, férias). Toque num modelo para preencher e edite como quiser.</div>
+          <div class="cf-av-presets">
+            <button type="button" class="cf-av-preset" data-av="demanda">⏳ Muita demanda</button>
+            <button type="button" class="cf-av-preset" data-av="chuva">🌧️ Chuva</button>
+            <button type="button" class="cf-av-preset" data-av="ferias">🏖️ Férias</button>
+          </div>
+          <textarea class="adm-pontos" id="admAvisoTxt" spellcheck="true" placeholder="Escreva o aviso que aparece no site (ou toque num modelo acima)"></textarea>
+          <label class="cf-av-toggle"><input type="checkbox" id="admAvisoOn"> Mostrar este aviso no site</label>
+
           <div class="adm-sec">Cotação do dia</div>
           <label class="field-label">1 Real (BRL) em Guarani</label>
           <input class="input" id="rBRL" type="number" min="0" step="1">
@@ -679,9 +702,12 @@
           <div class="adm-tiers" id="admTiers"></div>
           <div class="adm-tier-actions"><button class="btn ghost" id="admAddTier" type="button">+ Adicionar faixa</button><button class="btn ghost" id="admResetFees" type="button">Restaurar padrão</button></div>
           <div class="adm-sec">WhatsApp de atendimento</div>
-          <label class="field-label">Número (com DDI/DDD, só números)</label>
+          <label class="field-label">Número principal (com DDI/DDD, só números)</label>
           <input class="input" id="admWa" type="text" inputmode="numeric" placeholder="Ex.: 5575992638041">
           <div class="adm-hint">Número que recebe os pedidos. Se você viajar, coloque aqui o número do responsável — vale em todos os aparelhos.</div>
+          <label class="field-label" style="margin-top:12px">2º WhatsApp (opcional)</label>
+          <input class="input" id="admWa2" type="text" inputmode="numeric" placeholder="Ex.: 5575990000000">
+          <div class="adm-hint">Depois de enviar pro número principal, aparece um botão para o cliente enviar o <b>mesmo pedido</b> também para este 2º número (ex.: sua esposa). Deixe em branco para não usar.</div>
           <div class="adm-sec">Pontos de retirada</div>
           <textarea class="adm-pontos" id="admPontos" spellcheck="false" placeholder="Nome | Endereço | Link do mapa (opcional)"></textarea>
           <div class="adm-hint">Um ponto por linha, separando com <b>|</b>:<br>Nome | Endereço | Link do mapa (opcional)</div>
@@ -737,7 +763,8 @@
       <div id="ordSuccess" style="display:none">
         <div class="ord-check">✓</div>
         <h3>Pedido enviado!</h3>
-        <p class="ord-succ-txt">Seu pedido foi enviado pelo WhatsApp. <b>Aguarde a confirmação da equipe.</b> A cotação e a disponibilidade só serão garantidas após a confirmação do atendimento.</p>
+        <p class="ord-succ-txt" id="ordSuccTxt">Seu pedido foi enviado pelo WhatsApp. <b>Aguarde a confirmação da equipe.</b> A cotação e a disponibilidade só serão garantidas após a confirmação do atendimento.</p>
+        <button class="btn" id="ordSendSecond" style="display:none;background:linear-gradient(180deg,#1cb463,#13934f);color:#fff;border:none">📲 Enviar também para o 2º WhatsApp</button>
         <button class="btn" id="ordSuccessClose">Entendi</button>
       </div>
     </div>
@@ -779,6 +806,38 @@
 .ped-group-body{padding-top:9px}
 .btn-del{background:#fdecea;color:#c0392b;border:1px solid #ecb7b0}
 .btn-rest{background:linear-gradient(180deg,#1cb463,#13934f);color:#fff}
+
+/* ===== Banner de aviso (site público) — cartão creme com ícone dourado ===== */
+.cf-aviso{position:relative;display:flex;align-items:flex-start;gap:16px;margin:0 0 18px;padding:20px 46px 20px 20px;border-radius:24px;
+  background:linear-gradient(180deg,#faf3da,#f5ecca);
+  border:1px solid rgba(199,154,58,.35);
+  box-shadow:0 18px 40px -24px rgba(0,0,0,.55);
+  animation:cfAvisoIn .35s ease both}
+@keyframes cfAvisoIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.cf-aviso-ic{flex:none;width:52px;color:#a97e22;margin-top:2px}
+.cf-aviso-ic svg{width:100%;height:auto;display:block}
+.cf-aviso-body{flex:1;min-width:0}
+.cf-aviso-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.22rem;color:#a97e22;letter-spacing:-.2px;margin:0 0 4px}
+.cf-aviso-txt{color:#1c2a52;font-size:1.02rem;line-height:1.45;font-weight:600;white-space:pre-wrap}
+.cf-aviso-x{position:absolute;top:14px;right:14px;width:32px;height:32px;border:none;background:transparent;cursor:pointer;
+  color:#3a466e;font-size:26px;line-height:1;font-weight:600;padding:0;border-radius:8px}
+.cf-aviso-x:hover{background:rgba(199,154,58,.14)}
+@media(max-width:520px){
+  .cf-aviso{padding:16px 42px 16px 15px;gap:12px;border-radius:20px}
+  .cf-aviso-ic{width:44px}
+  .cf-aviso-title{font-size:1.08rem}
+  .cf-aviso-txt{font-size:.93rem}
+}
+
+/* ===== Painel: seção de aviso ===== */
+.cf-av-presets{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 10px}
+.cf-av-preset{background:var(--field);border:1px solid var(--line);color:var(--ink);
+  border-radius:999px;padding:7px 13px;cursor:pointer;font-size:.82rem;font-weight:700;
+  font-family:'Plus Jakarta Sans',sans-serif}
+.cf-av-preset:hover{border-color:var(--gold)}
+.cf-av-toggle{display:flex;align-items:center;gap:9px;cursor:pointer;margin:2px 0 10px;
+  font-weight:700;color:var(--ink)}
+.cf-av-toggle input{width:auto;margin:0}
 </style>
 
 <script>
@@ -819,6 +878,36 @@
     return fin.concat([acima]);
   }
   function waNum(){ try{ var n=String(cfg.waNumber||"").replace(/\D/g,""); return n||WA_NUMBER; }catch(e){ return WA_NUMBER; } }
+  function waNum2(){ try{ return String(cfg.waNumber2||"").replace(/\D/g,""); }catch(e){ return ""; } }
+
+  // modelos de aviso (o cambista pode editar o texto livremente)
+  var AVISO_PRESETS = {
+    demanda:{ texto:"Estamos com alta demanda hoje e os atendimentos podem demorar um pouco mais. Agradecemos a paciência!" },
+    chuva:{   texto:"Devido à forte chuva, estamos com atrasos nas entregas hoje. Agradecemos a compreensão!" },
+    ferias:{  texto:"Estamos de férias e retornaremos os atendimentos em breve. Obrigado pela compreensão!" }
+  };
+  // ícones do aviso em traço dourado (svg), no estilo do cartão
+  var AVISO_ICONS = {
+    chuva:'<svg viewBox="0 0 52 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 30a9 9 0 0 1-1.6-17.86A12 12 0 0 1 35.4 14.5 8 8 0 0 1 38 30H14z"/><path d="M17 36v5"/><path d="M25 36v5"/><path d="M33 36v5"/></svg>',
+    demanda:'<svg viewBox="0 0 52 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5h22"/><path d="M15 43h22"/><path d="M18 5v6c0 6 8 9 8 13s-8 7-8 13v6"/><path d="M34 5v6c0 6-8 9-8 13s8 7 8 13v6"/></svg>',
+    ferias:'<svg viewBox="0 0 52 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="26" cy="22" r="9"/><path d="M26 5v4"/><path d="M26 35v4"/><path d="M9 22h4"/><path d="M39 22h4"/><path d="M14 10l3 3"/><path d="M38 10l-3 3"/><path d="M14 34l3-3"/><path d="M38 34l-3-3"/><path d="M8 43h36"/></svg>',
+    padrao:'<svg viewBox="0 0 52 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M38 8L14 17H9a4 4 0 0 0-4 4v4a4 4 0 0 0 4 4h5l24 9V8z"/><path d="M38 16a8 8 0 0 1 0 14"/><path d="M17 30l3 11h6l-2.5-10"/></svg>'
+  };
+  function avisoIcon(tipo){ return AVISO_ICONS[tipo] || AVISO_ICONS.padrao; }
+  function avisoKey(a){ return "cfAvisoClosed_" + String((a&&a.texto)||"").length + "_" + String((a&&a.texto)||"").slice(0,40); }
+  function renderAviso(){
+    var box=$("cfAviso"); if(!box) return;
+    var a=cfg.aviso||{};
+    var on = !!a.ativo && String(a.texto||"").trim();
+    var fechado=false; try{ fechado=!!sessionStorage.getItem(avisoKey(a)); }catch(e){}
+    if(on && !fechado){
+      $("cfAvisoIc").innerHTML = avisoIcon(a.tipo);
+      $("cfAvisoTxt").textContent = String(a.texto).trim();
+      box.style.display="flex";
+    } else {
+      box.style.display="none";
+    }
+  }
 
   var CUR = {
     BRL:{ code:"BRL", name:"Real",    pre:"R$",  dec:2, flag:flagBR },
@@ -833,12 +922,14 @@
   var cfg = loadCfg();
   var from = "PYG", to = "BRL";
   var lastOp = null;
+  var lastOrderMsg = "";   // texto do último pedido enviado (para o botão do 2º WhatsApp)
   var delivery = null;   // null = ainda não escolheu Retirada/Delivery (obrigatório escolher)
   var pickIdx = 0;   // ponto de retirada selecionado
 
   function loadCfg(){
     var c = { rBRL:DEFAULTS.rBRL, pin:DEFAULTS.pin, updated:DEFAULTS.updated, deliveryFee:DEFAULTS.deliveryFee, fees:DEFAULTS.fees.slice(),
-              tiers:defaultTiers(), waNumber:WA_NUMBER,
+              tiers:defaultTiers(), waNumber:WA_NUMBER, waNumber2:"",
+              aviso:{ ativo:false, texto:"", tipo:"" },
               pontos:DEFAULTS.pontos.map(function(p){ return {nome:p.nome,endereco:p.endereco,maps:p.maps}; }) };
     try{
       var raw = localStorage.getItem(STORE_KEY);
@@ -851,6 +942,8 @@
         if(Array.isArray(s.tiers) && s.tiers.length) c.tiers=normalizeTiers(s.tiers);
         else if(Array.isArray(s.fees) && s.fees.length===13) c.tiers=normalizeTiers(defaultTiers().map(function(t,i){ return {ate:t.ate, taxa:Number(s.fees[i])||t.taxa}; }));
         if(typeof s.waNumber==="string" && s.waNumber.replace(/\D/g,"")) c.waNumber=s.waNumber.replace(/\D/g,"");
+        if(typeof s.waNumber2==="string") c.waNumber2=s.waNumber2.replace(/\D/g,"");
+        if(s.aviso && typeof s.aviso==="object"){ c.aviso={ ativo:!!s.aviso.ativo, texto:String(s.aviso.texto||""), tipo:String(s.aviso.tipo||"") }; }
         if(Array.isArray(s.pontos) && s.pontos.length) c.pontos=s.pontos
           .filter(function(p){ return p && typeof p.nome==="string" && p.nome.trim(); })
           .map(function(p){ return { nome:String(p.nome), endereco:String(p.endereco||""), maps:String(p.maps||"") }; });
@@ -1024,7 +1117,20 @@
     var _ped=novoPedido(nome);
     pedidoAdd(_ped);
     cfPedidoCloudInsert(_ped);   // salva no Supabase (cliente anônimo) -> aparece no painel do cambista em qualquer aparelho
-    window.open("https://wa.me/"+waNum()+"?text="+encodeURIComponent(waText(lastOp, nome)), "_blank");
+    lastOrderMsg = waText(lastOp, nome);
+    window.open("https://wa.me/"+waNum()+"?text="+encodeURIComponent(lastOrderMsg), "_blank");
+    // 2º WhatsApp (opcional): mostra botão para o cliente enviar o mesmo pedido ao segundo número
+    var n2=waNum2(), btn2=$("ordSendSecond");
+    if(btn2){
+      if(n2){
+        btn2.style.display="block"; btn2.disabled=false; btn2.style.opacity="";
+        btn2.textContent="📲 Enviar também para o 2º WhatsApp";
+        if($("ordSuccTxt")) $("ordSuccTxt").innerHTML="Seu pedido foi enviado! <b>Toque no botão verde abaixo para enviar também ao 2º WhatsApp.</b> Depois, aguarde a confirmação da equipe.";
+      } else {
+        btn2.style.display="none";
+        if($("ordSuccTxt")) $("ordSuccTxt").innerHTML="Seu pedido foi enviado pelo WhatsApp. <b>Aguarde a confirmação da equipe.</b> A cotação e a disponibilidade só serão garantidas após a confirmação do atendimento.";
+      }
+    }
     $("ordForm").style.display="none"; $("ordSuccess").style.display="block";
   }
 
@@ -1313,6 +1419,9 @@
     $("admDeliv").value = cfg.deliveryFee;
     buildAdminTiers();
     if($("admWa")) $("admWa").value = cfg.waNumber||"";
+    if($("admWa2")) $("admWa2").value = cfg.waNumber2||"";
+    if($("admAvisoTxt")){ $("admAvisoTxt").value = (cfg.aviso&&cfg.aviso.texto)||""; $("admAvisoTxt").dataset.tipo = (cfg.aviso&&cfg.aviso.tipo)||""; }
+    if($("admAvisoOn")) $("admAvisoOn").checked = !!(cfg.aviso&&cfg.aviso.ativo);
     $("admPontos").value = pontosToText();
     $("admErr2").textContent = "";
     setAdmTab("pedidos");
@@ -1338,11 +1447,16 @@
     cfg.deliveryFee = dv;
     cfg.tiers = normalizeTiers(readAdminTiersRaw());
     var _wa=(($("admWa")&&$("admWa").value)||"").replace(/\D/g,""); if(_wa) cfg.waNumber=_wa;
+    cfg.waNumber2 = (($("admWa2")&&$("admWa2").value)||"").replace(/\D/g,"");
+    var _avTxt=(($("admAvisoTxt")&&$("admAvisoTxt").value)||"").trim();
+    var _avOn=!!($("admAvisoOn")&&$("admAvisoOn").checked);
+    var _avTipo=($("admAvisoTxt")&&$("admAvisoTxt").dataset.tipo)||(cfg.aviso&&cfg.aviso.tipo)||"";
+    cfg.aviso = { ativo:(_avOn && !!_avTxt), texto:_avTxt, tipo:_avTipo };
     cfg.pontos = parsePontosText($("admPontos").value);
     if(pickIdx >= cfg.pontos.length) pickIdx = 0;
     var d = new Date(), p = function(n){ return ("0"+n).slice(-2); };
     cfg.updated = p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear();
-    saveCfg(); buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); showToast();
+    saveCfg(); buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); showToast();
     if(cfUser){ cfCotacaoPush(); cfConfigPush(); } else if(cfReady()) alert("Salvo neste aparelho. Para atualizar nos outros aparelhos/no site, entre na nuvem (botão \"entrar\" no topo do painel) e salve de novo.");
     closeAdmin();
   }
@@ -1352,6 +1466,19 @@
   $("admClose").addEventListener("click", closeAdmin);
   $("admEnter").addEventListener("click", unlock);
   $("admSave").addEventListener("click", saveAdmin);
+  // modelos de aviso: preenchem o texto e marcam o tipo (ícone) + ativam o aviso
+  (function(){
+    var wrap=document.querySelector(".cf-av-presets");
+    if(wrap) wrap.addEventListener("click", function(e){
+      var b=e.target.closest(".cf-av-preset"); if(!b) return;
+      var tipo=b.dataset.av, p=AVISO_PRESETS[tipo]; if(!p) return;
+      var ta=$("admAvisoTxt"); if(ta){ ta.value=p.texto; ta.dataset.tipo=tipo; }
+      var on=$("admAvisoOn"); if(on) on.checked=true;
+      try{ ta.focus(); }catch(_){}
+    });
+    var ta=$("admAvisoTxt");
+    if(ta) ta.addEventListener("input", function(){ this.dataset.tipo=""; });  // texto editado à mão => ícone padrão 📢
+  })();
   (function(){ var _cp=$("admChangePass"); if(_cp) _cp.addEventListener("click", cfChangePassword); })();
   $("admResetFees").addEventListener("click", function(){ cfg.tiers = defaultTiers(); buildAdminTiers(); });
   (function(){ var _a=$("admAddTier"); if(_a) _a.addEventListener("click", tierAddRow); })();
@@ -1392,6 +1519,16 @@
   $("ordSuccessClose").addEventListener("click", function(){ $("orderOverlay").classList.remove("show"); });
   $("orderOverlay").addEventListener("click", function(e){ if(e.target===$("orderOverlay")) $("orderOverlay").classList.remove("show"); });
   $("ordConfirm").addEventListener("click", confirmOrder);
+  (function(){ var b2=$("ordSendSecond"); if(b2) b2.addEventListener("click", function(){
+    var n2=waNum2(); if(!n2) return;
+    window.open("https://wa.me/"+n2+"?text="+encodeURIComponent(lastOrderMsg||"Olá! Gostaria de fazer um câmbio."), "_blank");
+    this.textContent="✓ Enviado ao 2º WhatsApp"; this.disabled=true; this.style.opacity=".7";
+  }); })();
+  // fechar o aviso (×): some nesta visita; um aviso novo/alterado volta a aparecer
+  (function(){ var x=$("cfAvisoX"); if(x) x.addEventListener("click", function(){
+    try{ sessionStorage.setItem(avisoKey(cfg.aviso), "1"); }catch(e){}
+    var b=$("cfAviso"); if(b) b.style.display="none";
+  }); })();
   $("ordName").addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); confirmOrder(); } });
 
   // admin: abas / período / filtro / aprovar-descartar
@@ -1464,6 +1601,8 @@
       fees:(Array.isArray(cfg.fees)?cfg.fees:[]).map(Number),
       tiers:(Array.isArray(cfg.tiers)?cfg.tiers:[]).map(function(t){ return {ate:(t.ate==null?null:Number(t.ate)), taxa:Number(t.taxa)||0}; }),
       waNumber:String(cfg.waNumber||""),
+      waNumber2:String(cfg.waNumber2||""),
+      aviso:{ ativo:!!(cfg.aviso&&cfg.aviso.ativo), texto:String((cfg.aviso&&cfg.aviso.texto)||""), tipo:String((cfg.aviso&&cfg.aviso.tipo)||"") },
       pontos:(Array.isArray(cfg.pontos)?cfg.pontos:[]).map(function(p){ return {nome:String(p.nome||""), endereco:String(p.endereco||""), maps:String(p.maps||"")}; })
     };
   }
@@ -1490,8 +1629,10 @@
       if(Array.isArray(cf.tiers) && cf.tiers.length){ cfg.tiers=normalizeTiers(cf.tiers); changed=true; }
       else if(Array.isArray(cf.fees) && cf.fees.length===13){ cfg.tiers=normalizeTiers(defaultTiers().map(function(t,i){ return {ate:t.ate, taxa:Number(cf.fees[i])||t.taxa}; })); changed=true; }
       if(typeof cf.waNumber==="string" && cf.waNumber.replace(/\D/g,"")){ cfg.waNumber=cf.waNumber.replace(/\D/g,""); changed=true; }
+      if(typeof cf.waNumber2==="string"){ cfg.waNumber2=cf.waNumber2.replace(/\D/g,""); changed=true; }
+      if(cf.aviso && typeof cf.aviso==="object"){ cfg.aviso={ ativo:!!cf.aviso.ativo, texto:String(cf.aviso.texto||""), tipo:String(cf.aviso.tipo||"") }; changed=true; }
       if(Array.isArray(cf.pontos)){ cfg.pontos=cf.pontos.filter(function(p){ return p && typeof p.nome==="string" && p.nome.trim(); }).map(function(p){ return {nome:String(p.nome), endereco:String(p.endereco||""), maps:String(p.maps||"")}; }); changed=true; }
-      if(changed){ saveCfg(); try{ if(pickIdx>=(cfg.pontos||[]).length) pickIdx=0; buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); }catch(e){} }
+      if(changed){ saveCfg(); try{ if(pickIdx>=(cfg.pontos||[]).length) pickIdx=0; buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); }catch(e){} }
     }catch(e){ console.error("configPull",e); }
   }
 
@@ -1649,6 +1790,7 @@
   renderPickup();
   updatePickupVisibility();
   calc();
+  renderAviso();   // banner de aviso (localStorage; a nuvem atualiza depois via cfConfigPull)
   cfCloudInit();   // Fase 3: cotação pública da nuvem + sessão + operações
 
   // ---------- intro: horário de funcionamento ----------

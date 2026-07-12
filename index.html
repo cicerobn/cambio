@@ -343,6 +343,7 @@
   .atab.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(21,36,76,.12)}
   .adm-sec{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;color:var(--ink-2);font-size:.82rem;margin:16px 0 8px}
   .seg{display:flex;gap:6px;margin-bottom:12px}
+  #filterSeg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   .seg button{flex:1;border:1px solid var(--line);background:var(--field);color:var(--muted);font-family:'Inter',sans-serif;font-size:.8rem;font-weight:600;padding:9px 4px;border-radius:10px;cursor:pointer;transition:.2s}
   .seg button.on{border-color:var(--gold);background:linear-gradient(180deg,rgba(199,154,58,.16),rgba(199,154,58,.04));color:#9a751f}
   .sum-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -352,12 +353,14 @@
   .ped-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px;margin-bottom:10px}
   .ped-card.status-aprovado{border-color:var(--green-line)}
   .ped-card.status-descartado{opacity:.6}
+  .ped-card.status-cancelado{opacity:.6;border-color:#ecb7b0}
   .pc-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
   .pc-name{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;color:var(--ink);font-size:.96rem}
   .pc-status{font-size:.64rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:3px 9px;border-radius:999px;border:1px solid var(--line)}
   .pc-status.pendente{color:#9a751f;background:rgba(199,154,58,.12);border-color:rgba(199,154,58,.4)}
   .pc-status.aprovado{color:var(--green-2);background:var(--green-soft);border-color:var(--green-line)}
   .pc-status.descartado{color:var(--muted);background:var(--field)}
+  .pc-status.cancelado{color:#c0392b;background:#fdecea;border-color:#ecb7b0}
   .pc-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:.84rem;border-bottom:1px solid var(--line)}
   .pc-row:last-of-type{border-bottom:0}
   .pc-row .rk{color:var(--muted)}
@@ -367,6 +370,7 @@
   .pc-actions button{flex:1;border:0;border-radius:10px;padding:10px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.85rem;cursor:pointer}
   .btn-apr{background:linear-gradient(180deg,#1cb463,#13934f);color:#fff}
   .btn-desc{background:#fff;color:var(--ink-2);border:1px solid var(--line)}
+  .btn-canc{background:#fff5e6;color:#b26a00;border:1px solid #f0d199}
   .ped-empty{text-align:center;color:var(--muted);font-size:.86rem;padding:22px 10px}
   /* modal de pedido */
   .ord-summary{background:var(--field);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:.92rem;color:var(--ink);line-height:1.65}
@@ -685,6 +689,7 @@
             <button type="button" data-f="pendente" class="on">Pendentes</button>
             <button type="button" data-f="aprovado">Aprovados</button>
             <button type="button" data-f="descartado">Descartados</button>
+            <button type="button" data-f="cancelado">Cancelados</button>
           </div>
           <div id="pedList"></div>
         </div>
@@ -1195,7 +1200,7 @@
   function fmtDateTime(iso){ var d=new Date(iso); return pad2(d.getDate())+"/"+pad2(d.getMonth()+1)+"/"+d.getFullYear()+" "+pad2(d.getHours())+":"+pad2(d.getMinutes()); }
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ var m={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}; return m[c]; }); }
   function prow(k,v,gold){ return '<div class="pc-row"><span class="rk">'+k+'</span><span class="rv'+(gold?" gold":"")+'">'+v+'</span></div>'; }
-  var STATUS_LABEL={pendente:"Pendente",aprovado:"Aprovado",descartado:"Descartado"};
+  var STATUS_LABEL={pendente:"Pendente",aprovado:"Aprovado",descartado:"Descartado",cancelado:"Cancelado"};
   var PERIOD_TITLE={hoje:"Resumo de hoje",semana:"Resumo da semana",mes:"Resumo do mês"};
   function taxaReaisDe(p){ return (p.taxa_reais!=null) ? p.taxa_reais : ((p.taxa_guarani||0)/(p.cotacao||1)); }
 
@@ -1229,8 +1234,9 @@
     if(/delivery/i.test(p.observacao||"")) h+=prow("Delivery", fmtBRL(Number(cfg.deliveryFee)||10), true);
     h+=prow("Data e horário", fmtDateTime(p.created_at));
     if(p.status==="pendente") h+='<div class="pc-actions"><button class="btn-apr" data-id="'+p.id+'">Aprovar</button><button class="btn-desc" data-id="'+p.id+'">Descartar</button></div>';
-    else if(p.status==="aprovado") h+='<div class="pc-actions"><button class="btn-del" data-id="'+p.id+'">Excluir</button></div>';
+    else if(p.status==="aprovado") h+='<div class="pc-actions"><button class="btn-canc" data-id="'+p.id+'">Cancelar</button></div>';
     else if(p.status==="descartado") h+='<div class="pc-actions"><button class="btn-rest" data-id="'+p.id+'">Restaurar</button><button class="btn-del" data-id="'+p.id+'">Excluir</button></div>';
+    else if(p.status==="cancelado") h+='<div class="pc-actions"><button class="btn-rest" data-id="'+p.id+'">Restaurar</button><button class="btn-del" data-id="'+p.id+'">Excluir</button></div>';
     h+='</div>';
     return h;
   }
@@ -1595,10 +1601,11 @@
   $("pedList").addEventListener("click", function(e){
     var head=e.target.closest(".ped-group-head");
     if(head){ var dk=head.getAttribute("data-day"); pedExpanded[dk]=!head.classList.contains("open"); renderPedidos(); return; }
-    var a=e.target.closest(".btn-apr"), d=e.target.closest(".btn-desc"), x=e.target.closest(".btn-del"), r=e.target.closest(".btn-rest");
+    var a=e.target.closest(".btn-apr"), d=e.target.closest(".btn-desc"), x=e.target.closest(".btn-del"), r=e.target.closest(".btn-rest"), c=e.target.closest(".btn-canc");
     if(a){ pedidoSetStatus(a.dataset.id,"aprovado"); cfPedidoCloudStatus(a.dataset.id,"aprovado"); cfDelivOnApprove(a.dataset.id); renderPedidos(); showToast(); cfPushPedido(a.dataset.id); }
     else if(d){ pedidoSetStatus(d.dataset.id,"descartado"); cfPedidoCloudStatus(d.dataset.id,"descartado"); renderPedidos(); }
-    else if(x){ if(confirm("Tem certeza? Esta operação será excluída.")) cfDeleteOp(x.dataset.id); }
+    else if(c){ cfCancelOp(c.dataset.id); }
+    else if(x){ if(confirm("Excluir de vez? Esta operação será apagada e não poderá ser recuperada.")) cfDeleteOp(x.dataset.id); }
     else if(r){ cfRestoreOp(r.dataset.id); }
   });
   $("admPin").addEventListener("keydown", function(e){ if(e.key==="Enter") unlock(); });
@@ -1750,6 +1757,16 @@
     cfPedidoCloudDelete(id);
     cfDelivRemove(id);
     pedidosSaveAll(pedidosLoad().filter(function(q){ return q.id!==id; }));
+    var pushed=cfPushedGet(); delete pushed[id]; try{ localStorage.setItem(CF_PUSHED_KEY,JSON.stringify(pushed)); }catch(e){}
+    await cfOpsPull(); renderPedidos(); showToast();
+  }
+  // Cancelar um pedido APROVADO: sai do Movimentado mas fica guardado na aba "Cancelados" (não some de vez)
+  async function cfCancelOp(id){
+    var list=pedidosLoad(), p=null,i; for(i=0;i<list.length;i++){ if(list[i].id===id){ p=list[i]; break; } }
+    if(p && p.cloud_id) await cfOpDelete(p.cloud_id);        // remove a operação do movimentado (cambio_operacoes) em todos os aparelhos
+    cfDelivRemove(id);
+    pedidoPatch(id,{status:"cancelado", cloud_id:null});     // mantém o registro, agora como Cancelado
+    cfPedidoCloudStatus(id,"cancelado");                     // atualiza o status no cambio_pedidos
     var pushed=cfPushedGet(); delete pushed[id]; try{ localStorage.setItem(CF_PUSHED_KEY,JSON.stringify(pushed)); }catch(e){}
     await cfOpsPull(); renderPedidos(); showToast();
   }

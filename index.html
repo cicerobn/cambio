@@ -480,6 +480,10 @@
         <div class="hrow today" id="hrowSat"><span class="hd">Sábado</span><span class="hv">09h às 13h</span></div>
         <div class="hrow" id="hrowSun"><span class="hd">Domingo</span><span class="hv off">Fechado</span></div>
       </div>
+      <div class="cf-aviso-mini" id="cfAvisoIntro" style="display:none">
+        <span class="cf-aviso-mini-ic" id="cfAvisoIntroIc"></span>
+        <span class="cf-aviso-mini-txt" id="cfAvisoIntroTxt"></span>
+      </div>
       <button class="intro-enter" id="introEnter" type="button">Entrar</button>
     </div>
   </div>
@@ -822,6 +826,12 @@
 .cf-aviso-x{position:absolute;top:14px;right:14px;width:32px;height:32px;border:none;background:transparent;cursor:pointer;
   color:#3a466e;font-size:26px;line-height:1;font-weight:600;padding:0;border-radius:8px}
 .cf-aviso-x:hover{background:rgba(199,154,58,.14)}
+/* versão compacta (1 linha) pra tela de entrada */
+.cf-aviso-mini{display:flex;align-items:center;gap:9px;margin:4px 0 14px;padding:9px 13px;border-radius:14px;
+  background:linear-gradient(180deg,#faf3da,#f5ecca);border:1px solid rgba(199,154,58,.35);text-align:left}
+.cf-aviso-mini-ic{flex:none;width:20px;color:#a97e22}
+.cf-aviso-mini-ic svg{width:100%;height:auto;display:block}
+.cf-aviso-mini-txt{flex:1;min-width:0;color:#1c2a52;font-size:.82rem;line-height:1.32;font-weight:600}
 @media(max-width:520px){
   .cf-aviso{margin:20px 0 8px;padding:16px 42px 16px 15px;gap:12px;border-radius:20px}
   .cf-aviso-ic{width:44px}
@@ -896,16 +906,22 @@
   function avisoIcon(tipo){ return AVISO_ICONS[tipo] || AVISO_ICONS.padrao; }
   function avisoKey(a){ return "cfAvisoClosed_" + String((a&&a.texto)||"").length + "_" + String((a&&a.texto)||"").slice(0,40); }
   function renderAviso(){
-    var box=$("cfAviso"); if(!box) return;
     var a=cfg.aviso||{};
-    var on = !!a.ativo && String(a.texto||"").trim();
+    var txt = String(a.texto||"").trim();
+    var on = !!a.ativo && !!txt;
+    var ic = avisoIcon(a.tipo);
     var fechado=false; try{ fechado=!!sessionStorage.getItem(avisoKey(a)); }catch(e){}
-    if(on && !fechado){
-      $("cfAvisoIc").innerHTML = avisoIcon(a.tipo);
-      $("cfAvisoTxt").textContent = String(a.texto).trim();
-      box.style.display="flex";
-    } else {
-      box.style.display="none";
+    // banner grande (site) — respeita o "fechar" (×)
+    var box=$("cfAviso");
+    if(box){
+      if(on && !fechado){ $("cfAvisoIc").innerHTML=ic; $("cfAvisoTxt").textContent=txt; box.style.display="flex"; }
+      else box.style.display="none";
+    }
+    // versão compacta (tela de entrada) — sempre que houver aviso ativo
+    var mini=$("cfAvisoIntro");
+    if(mini){
+      if(on){ $("cfAvisoIntroIc").innerHTML=ic; $("cfAvisoIntroTxt").textContent=txt; mini.style.display="flex"; }
+      else mini.style.display="none";
     }
   }
 

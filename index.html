@@ -502,8 +502,12 @@
         <div class="cf-aviso-title">Aviso importante</div>
         <div class="cf-aviso-txt" id="cfAvisoTxt"></div>
       </div>
-      <button type="button" class="cf-aviso-x" id="cfAvisoX" aria-label="Fechar aviso">×</button>
+      <button type="button" class="cf-aviso-x" id="cfAvisoX" aria-label="Minimizar aviso">×</button>
     </div>
+    <button type="button" class="cf-aviso-chip" id="cfAvisoChip" style="display:none">
+      <span class="cf-aviso-chip-ic" id="cfAvisoChipIc"></span>
+      <span>Ver aviso</span>
+    </button>
 
     <!-- ===== CARD ===== -->
     <section class="card">
@@ -844,8 +848,17 @@
 .cf-aviso-mini-ic{flex:none;width:20px;color:#a97e22;transform-origin:center;animation:cfAvisoIcon 2.6s ease-in-out infinite}
 .cf-aviso-mini-ic svg{width:100%;height:auto;display:block}
 .cf-aviso-mini-txt{flex:1;min-width:0;color:#1c2a52;font-size:.82rem;line-height:1.32;font-weight:600}
+/* botão minimizado: aparece quando o cliente fecha o aviso (não some de vez) */
+.cf-aviso-chip{display:inline-flex;align-items:center;gap:8px;margin:20px 0 12px;padding:9px 15px;border-radius:999px;
+  background:linear-gradient(180deg,#faf3da,#f5ecca);border:1px solid rgba(216,173,74,.5);
+  color:#a97e22;font-weight:800;font-size:.85rem;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;
+  box-shadow:0 8px 20px -14px rgba(0,0,0,.5);animation:cfAvisoGlowMini 2.6s ease-in-out infinite}
+.cf-aviso-chip:hover{border-color:#c79a3a}
+.cf-aviso-chip-ic{flex:none;width:18px;color:#a97e22;display:inline-flex}
+.cf-aviso-chip-ic svg{width:100%;height:auto;display:block}
+
 @media(prefers-reduced-motion:reduce){
-  .cf-aviso,.cf-aviso::after,.cf-aviso-ic,.cf-aviso-mini,.cf-aviso-mini::after,.cf-aviso-mini-ic{animation:none !important}
+  .cf-aviso,.cf-aviso::after,.cf-aviso-ic,.cf-aviso-mini,.cf-aviso-mini::after,.cf-aviso-mini-ic,.cf-aviso-chip{animation:none !important}
 }
 @media(max-width:520px){
   .cf-aviso{margin:20px 0 8px;padding:16px 42px 16px 15px;gap:12px;border-radius:20px}
@@ -926,11 +939,17 @@
     var on = !!a.ativo && !!txt;
     var ic = avisoIcon(a.tipo);
     var fechado=false; try{ fechado=!!sessionStorage.getItem(avisoKey(a)); }catch(e){}
-    // banner grande (site) — respeita o "fechar" (×)
+    // banner grande (site) — o × minimiza (não some de vez)
     var box=$("cfAviso");
     if(box){
       if(on && !fechado){ $("cfAvisoIc").innerHTML=ic; $("cfAvisoTxt").textContent=txt; box.style.display="flex"; }
       else box.style.display="none";
+    }
+    // botão minimizado: aparece quando o aviso está ativo mas foi fechado
+    var chip=$("cfAvisoChip");
+    if(chip){
+      if(on && fechado){ $("cfAvisoChipIc").innerHTML=ic; chip.style.display="inline-flex"; }
+      else chip.style.display="none";
     }
     // versão compacta (tela de entrada) — sempre que houver aviso ativo
     var mini=$("cfAvisoIntro");
@@ -1555,11 +1574,17 @@
     window.open("https://wa.me/"+n2+"?text="+encodeURIComponent(lastOrderMsg||"Olá! Gostaria de fazer um câmbio."), "_blank");
     this.textContent="✓ Enviado ao 2º WhatsApp"; this.disabled=true; this.style.opacity=".7";
   }); })();
-  // fechar o aviso (×): some nesta visita; um aviso novo/alterado volta a aparecer
-  (function(){ var x=$("cfAvisoX"); if(x) x.addEventListener("click", function(){
-    try{ sessionStorage.setItem(avisoKey(cfg.aviso), "1"); }catch(e){}
-    var b=$("cfAviso"); if(b) b.style.display="none";
-  }); })();
+  // fechar o aviso (×): MINIMIZA pro botão "Ver aviso" (não some de vez); clicar no botão reabre
+  (function(){
+    var x=$("cfAvisoX"); if(x) x.addEventListener("click", function(){
+      try{ sessionStorage.setItem(avisoKey(cfg.aviso), "1"); }catch(e){}
+      renderAviso();
+    });
+    var chip=$("cfAvisoChip"); if(chip) chip.addEventListener("click", function(){
+      try{ sessionStorage.removeItem(avisoKey(cfg.aviso)); }catch(e){}
+      renderAviso();
+    });
+  })();
   $("ordName").addEventListener("keydown", function(e){ if(e.key==="Enter"){ e.preventDefault(); confirmOrder(); } });
 
   // admin: abas / período / filtro / aprovar-descartar

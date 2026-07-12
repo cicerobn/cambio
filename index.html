@@ -812,13 +812,19 @@
 .btn-rest{background:linear-gradient(180deg,#1cb463,#13934f);color:#fff}
 
 /* ===== Banner de aviso (site público) — cartão creme com ícone dourado ===== */
-.cf-aviso{position:relative;display:flex;align-items:flex-start;gap:16px;margin:24px 0 8px;padding:20px 46px 20px 20px;border-radius:24px;
+.cf-aviso{position:relative;overflow:hidden;display:flex;align-items:flex-start;gap:16px;margin:24px 0 8px;padding:20px 46px 20px 20px;border-radius:24px;
   background:linear-gradient(180deg,#faf3da,#f5ecca);
-  border:1px solid rgba(199,154,58,.35);
+  border:1px solid rgba(216,173,74,.5);
   box-shadow:0 18px 40px -24px rgba(0,0,0,.55);
-  animation:cfAvisoIn .35s ease both}
-@keyframes cfAvisoIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-.cf-aviso-ic{flex:none;width:52px;color:#a97e22;margin-top:2px}
+  animation:cfAvisoIn .45s cubic-bezier(.2,.9,.25,1) both, cfAvisoGlow 2.6s ease-in-out .45s infinite}
+@keyframes cfAvisoIn{0%{opacity:0;transform:translateY(-10px) scale(.985)}60%{opacity:1;transform:translateY(2px) scale(1.005)}100%{opacity:1;transform:none}}
+@keyframes cfAvisoGlow{0%,100%{box-shadow:0 16px 38px -24px rgba(0,0,0,.55),0 0 0 0 rgba(216,173,74,0)}50%{box-shadow:0 16px 38px -22px rgba(0,0,0,.55),0 0 24px 2px rgba(216,173,74,.5)}}
+.cf-aviso::after{content:"";position:absolute;top:0;bottom:0;left:-80%;width:55%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.6),transparent);transform:skewX(-18deg);
+  animation:cfAvisoShine 4.2s ease-in-out infinite}
+@keyframes cfAvisoShine{0%{left:-80%}28%{left:150%}100%{left:150%}}
+.cf-aviso-ic{flex:none;width:52px;color:#a97e22;margin-top:2px;transform-origin:center;animation:cfAvisoIcon 2.6s ease-in-out infinite}
+@keyframes cfAvisoIcon{0%,100%{transform:scale(1)}50%{transform:scale(1.13)}}
 .cf-aviso-ic svg{width:100%;height:auto;display:block}
 .cf-aviso-body{flex:1;min-width:0}
 .cf-aviso-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.22rem;color:#a97e22;letter-spacing:-.2px;margin:0 0 4px}
@@ -827,11 +833,20 @@
   color:#3a466e;font-size:26px;line-height:1;font-weight:600;padding:0;border-radius:8px}
 .cf-aviso-x:hover{background:rgba(199,154,58,.14)}
 /* versão compacta (1 linha) pra tela de entrada */
-.cf-aviso-mini{display:flex;align-items:center;gap:9px;margin:4px 0 14px;padding:9px 13px;border-radius:14px;
-  background:linear-gradient(180deg,#faf3da,#f5ecca);border:1px solid rgba(199,154,58,.35);text-align:left}
-.cf-aviso-mini-ic{flex:none;width:20px;color:#a97e22}
+.cf-aviso-mini{position:relative;overflow:hidden;display:flex;align-items:center;gap:9px;margin:4px 0 14px;padding:9px 13px;border-radius:14px;
+  background:linear-gradient(180deg,#faf3da,#f5ecca);border:1px solid rgba(216,173,74,.45);text-align:left;
+  animation:cfAvisoInMini .45s cubic-bezier(.2,.9,.25,1) both, cfAvisoGlowMini 2.6s ease-in-out .45s infinite}
+@keyframes cfAvisoInMini{0%{opacity:0;transform:translateY(-6px)}100%{opacity:1;transform:none}}
+@keyframes cfAvisoGlowMini{0%,100%{box-shadow:0 0 0 0 rgba(216,173,74,0)}50%{box-shadow:0 0 15px 1px rgba(216,173,74,.45)}}
+.cf-aviso-mini::after{content:"";position:absolute;top:0;bottom:0;left:-80%;width:55%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.6),transparent);transform:skewX(-18deg);
+  animation:cfAvisoShine 4.2s ease-in-out infinite}
+.cf-aviso-mini-ic{flex:none;width:20px;color:#a97e22;transform-origin:center;animation:cfAvisoIcon 2.6s ease-in-out infinite}
 .cf-aviso-mini-ic svg{width:100%;height:auto;display:block}
 .cf-aviso-mini-txt{flex:1;min-width:0;color:#1c2a52;font-size:.82rem;line-height:1.32;font-weight:600}
+@media(prefers-reduced-motion:reduce){
+  .cf-aviso,.cf-aviso::after,.cf-aviso-ic,.cf-aviso-mini,.cf-aviso-mini::after,.cf-aviso-mini-ic{animation:none !important}
+}
 @media(max-width:520px){
   .cf-aviso{margin:20px 0 8px;padding:16px 42px 16px 15px;gap:12px;border-radius:20px}
   .cf-aviso-ic{width:44px}

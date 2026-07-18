@@ -705,6 +705,18 @@
           <textarea class="adm-pontos" id="admAvisoTxt" spellcheck="true" placeholder="Escreva o aviso que aparece no site (ou toque num modelo acima)"></textarea>
           <label class="cf-av-toggle"><input type="checkbox" id="admAvisoOn"> Mostrar este aviso no site</label>
 
+          <div class="adm-sec">Horário de funcionamento (tela de entrada)</div>
+          <div class="adm-hint">Edite o texto de cada dia. Marque <b>Fechado</b> pra o dia não atender (o "Aberto/Fechado agora" segue os horários que você digitar, ex.: <b>09h às 17h</b>).</div>
+          <label class="field-label">Segunda a Sexta</label>
+          <input class="input" id="admHorSemana" type="text" placeholder="09h às 17h">
+          <label class="cf-hor-fechado"><input type="checkbox" id="admHorSemanaF"> Fechado neste dia</label>
+          <label class="field-label">Sábado</label>
+          <input class="input" id="admHorSabado" type="text" placeholder="09h às 13h">
+          <label class="cf-hor-fechado"><input type="checkbox" id="admHorSabadoF"> Fechado neste dia</label>
+          <label class="field-label">Domingo</label>
+          <input class="input" id="admHorDomingo" type="text" placeholder="09h às 13h">
+          <label class="cf-hor-fechado"><input type="checkbox" id="admHorDomingoF"> Fechado neste dia</label>
+
           <div class="adm-sec">Cotação do dia</div>
           <label class="field-label">1 Real (BRL) em Guarani</label>
           <input class="input" id="rBRL" type="number" min="0" step="1">
@@ -881,6 +893,8 @@
 .cf-av-toggle{display:flex;align-items:center;gap:9px;cursor:pointer;margin:2px 0 10px;
   font-weight:700;color:var(--ink)}
 .cf-av-toggle input{width:auto;margin:0}
+.cf-hor-fechado{display:flex;align-items:center;gap:8px;margin:6px 0 10px;font-weight:700;color:var(--ink);font-size:.88rem;cursor:pointer}
+.cf-hor-fechado input{width:auto;margin:0}
 </style>
 
 <script>
@@ -964,6 +978,38 @@
     }
   }
 
+  // ===== Horário de funcionamento (tela de entrada) — editável no painel =====
+  function normalizeHorarios(h){
+    h=h||{};
+    function one(o,defTxt){ o=o||{}; return { txt:String(o.txt||defTxt||""), fechado:!!o.fechado }; }
+    return { semana:one(h.semana,"09h às 17h"), sabado:one(h.sabado,"09h às 13h"), domingo:one(h.domingo,"") };
+  }
+  function parseHoras(txt){
+    var m=String(txt||"").match(/(\d{1,2})(?:[:h](\d{2}))?\s*(?:às|as|a|-|–|até|ate)\s*(\d{1,2})(?:[:h](\d{2}))?/i);
+    if(!m) return null;
+    var i=(+m[1])*60+(+(m[2]||0)), f=(+m[3])*60+(+(m[4]||0));
+    if(isNaN(i)||isNaN(f)||f<=i) return null;
+    return {ini:i, fim:f};
+  }
+  function renderIntro(){
+    var H=cfg.horarios||{};
+    function setRow(id,o){ var row=$(id); if(!row) return; var hv=row.querySelector(".hv"); if(!hv) return;
+      var t=String((o&&o.txt)||"").trim();
+      if(!o || o.fechado || !t){ hv.textContent="Fechado"; hv.classList.add("off"); }
+      else { hv.textContent=t; hv.classList.remove("off"); }
+    }
+    setRow("hrowWeek",H.semana); setRow("hrowSat",H.sabado); setRow("hrowSun",H.domingo);
+    var now=new Date(), day=now.getDay(), mins=now.getHours()*60+now.getMinutes();
+    var today=(day>=1&&day<=5)?H.semana:(day===6)?H.sabado:H.domingo;
+    var defWin=(day>=1&&day<=5)?{ini:540,fim:1020}:(day===6)?{ini:540,fim:780}:null;
+    var open=false;
+    if(today && !today.fechado && String(today.txt||"").trim()){ var w=parseHoras(today.txt)||defWin; if(w) open=(mins>=w.ini && mins<w.fim); }
+    var st=$("introStatus"), tx=$("introStatusTxt");
+    if(st&&tx){ if(open){ st.className="intro-status open"; tx.textContent="Aberto agora"; } else { st.className="intro-status closed"; tx.textContent="Fechado no momento"; } }
+    ["hrowWeek","hrowSat","hrowSun"].forEach(function(id){ var r=$(id); if(r) r.classList.remove("today"); });
+    var tid=(day>=1&&day<=5)?"hrowWeek":(day===6)?"hrowSat":"hrowSun"; var te=$(tid); if(te) te.classList.add("today");
+  }
+
   var CUR = {
     BRL:{ code:"BRL", name:"Real",    pre:"R$",  dec:2, flag:flagBR },
     PYG:{ code:"PYG", name:"Guarani", pre:"Gs.", dec:0, flag:flagPY }
@@ -985,6 +1031,7 @@
     var c = { rBRL:DEFAULTS.rBRL, pin:DEFAULTS.pin, updated:DEFAULTS.updated, deliveryFee:DEFAULTS.deliveryFee, fees:DEFAULTS.fees.slice(),
               tiers:defaultTiers(), waNumber:WA_NUMBER, waNumber2:"",
               aviso:{ ativo:false, texto:"", tipo:"" },
+              horarios:{ semana:{txt:"09h às 17h",fechado:false}, sabado:{txt:"09h às 13h",fechado:false}, domingo:{txt:"",fechado:true} },
               pontos:DEFAULTS.pontos.map(function(p){ return {nome:p.nome,endereco:p.endereco,maps:p.maps}; }) };
     try{
       var raw = localStorage.getItem(STORE_KEY);
@@ -999,6 +1046,7 @@
         if(typeof s.waNumber==="string" && s.waNumber.replace(/\D/g,"")) c.waNumber=s.waNumber.replace(/\D/g,"");
         if(typeof s.waNumber2==="string") c.waNumber2=s.waNumber2.replace(/\D/g,"");
         if(s.aviso && typeof s.aviso==="object"){ c.aviso={ ativo:!!s.aviso.ativo, texto:String(s.aviso.texto||""), tipo:String(s.aviso.tipo||"") }; }
+        if(s.horarios && typeof s.horarios==="object") c.horarios=normalizeHorarios(s.horarios);
         if(Array.isArray(s.pontos) && s.pontos.length) c.pontos=s.pontos
           .filter(function(p){ return p && typeof p.nome==="string" && p.nome.trim(); })
           .map(function(p){ return { nome:String(p.nome), endereco:String(p.endereco||""), maps:String(p.maps||"") }; });
@@ -1478,6 +1526,14 @@
     if($("admWa2")) $("admWa2").value = cfg.waNumber2||"";
     if($("admAvisoTxt")){ $("admAvisoTxt").value = (cfg.aviso&&cfg.aviso.texto)||""; $("admAvisoTxt").dataset.tipo = (cfg.aviso&&cfg.aviso.tipo)||""; }
     if($("admAvisoOn")) $("admAvisoOn").checked = !!(cfg.aviso&&cfg.aviso.ativo);
+    (function(){ var H=cfg.horarios||{};
+      if($("admHorSemana")) $("admHorSemana").value=(H.semana&&H.semana.txt)||"";
+      if($("admHorSemanaF")) $("admHorSemanaF").checked=!!(H.semana&&H.semana.fechado);
+      if($("admHorSabado")) $("admHorSabado").value=(H.sabado&&H.sabado.txt)||"";
+      if($("admHorSabadoF")) $("admHorSabadoF").checked=!!(H.sabado&&H.sabado.fechado);
+      if($("admHorDomingo")) $("admHorDomingo").value=(H.domingo&&H.domingo.txt)||"";
+      if($("admHorDomingoF")) $("admHorDomingoF").checked=!!(H.domingo&&H.domingo.fechado);
+    })();
     $("admPontos").value = pontosToText();
     $("admErr2").textContent = "";
     setAdmTab("pedidos");
@@ -1508,11 +1564,16 @@
     var _avOn=!!($("admAvisoOn")&&$("admAvisoOn").checked);
     var _avTipo=($("admAvisoTxt")&&$("admAvisoTxt").dataset.tipo)||(cfg.aviso&&cfg.aviso.tipo)||"";
     cfg.aviso = { ativo:(_avOn && !!_avTxt), texto:_avTxt, tipo:_avTipo };
+    cfg.horarios = normalizeHorarios({
+      semana:{ txt:(($("admHorSemana")&&$("admHorSemana").value)||"").trim(), fechado:!!($("admHorSemanaF")&&$("admHorSemanaF").checked) },
+      sabado:{ txt:(($("admHorSabado")&&$("admHorSabado").value)||"").trim(), fechado:!!($("admHorSabadoF")&&$("admHorSabadoF").checked) },
+      domingo:{ txt:(($("admHorDomingo")&&$("admHorDomingo").value)||"").trim(), fechado:!!($("admHorDomingoF")&&$("admHorDomingoF").checked) }
+    });
     cfg.pontos = parsePontosText($("admPontos").value);
     if(pickIdx >= cfg.pontos.length) pickIdx = 0;
     var d = new Date(), p = function(n){ return ("0"+n).slice(-2); };
     cfg.updated = p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear();
-    saveCfg(); buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); showToast();
+    saveCfg(); buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); renderIntro(); showToast();
     if(cfUser){ cfCotacaoPush(); cfConfigPush(); } else if(cfReady()) alert("Salvo neste aparelho. Para atualizar nos outros aparelhos/no site, entre na nuvem (botão \"entrar\" no topo do painel) e salve de novo.");
     closeAdmin();
   }
@@ -1666,6 +1727,7 @@
       waNumber:String(cfg.waNumber||""),
       waNumber2:String(cfg.waNumber2||""),
       aviso:{ ativo:!!(cfg.aviso&&cfg.aviso.ativo), texto:String((cfg.aviso&&cfg.aviso.texto)||""), tipo:String((cfg.aviso&&cfg.aviso.tipo)||"") },
+      horarios:normalizeHorarios(cfg.horarios),
       pontos:(Array.isArray(cfg.pontos)?cfg.pontos:[]).map(function(p){ return {nome:String(p.nome||""), endereco:String(p.endereco||""), maps:String(p.maps||"")}; })
     };
   }
@@ -1694,8 +1756,9 @@
       if(typeof cf.waNumber==="string" && cf.waNumber.replace(/\D/g,"")){ cfg.waNumber=cf.waNumber.replace(/\D/g,""); changed=true; }
       if(typeof cf.waNumber2==="string"){ cfg.waNumber2=cf.waNumber2.replace(/\D/g,""); changed=true; }
       if(cf.aviso && typeof cf.aviso==="object"){ cfg.aviso={ ativo:!!cf.aviso.ativo, texto:String(cf.aviso.texto||""), tipo:String(cf.aviso.tipo||"") }; changed=true; }
+      if(cf.horarios && typeof cf.horarios==="object"){ cfg.horarios=normalizeHorarios(cf.horarios); changed=true; }
       if(Array.isArray(cf.pontos)){ cfg.pontos=cf.pontos.filter(function(p){ return p && typeof p.nome==="string" && p.nome.trim(); }).map(function(p){ return {nome:String(p.nome), endereco:String(p.endereco||""), maps:String(p.maps||"")}; }); changed=true; }
-      if(changed){ saveCfg(); try{ if(pickIdx>=(cfg.pontos||[]).length) pickIdx=0; buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); }catch(e){} }
+      if(changed){ saveCfg(); try{ if(pickIdx>=(cfg.pontos||[]).length) pickIdx=0; buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); renderIntro(); }catch(e){} }
     }catch(e){ console.error("configPull",e); }
   }
 
@@ -1870,16 +1933,7 @@
   (function setupIntro(){
     var hl = document.querySelector(".logo");
     if(hl && hl.getAttribute("src")) $("introLogo").src = hl.getAttribute("src");
-    var now = new Date(), day = now.getDay(), mins = now.getHours()*60 + now.getMinutes(), open=false;
-    if(day>=1 && day<=5) open = (mins>=540 && mins<1020);  // Seg–Sex 09:00–17:00
-    else if(day===6)     open = (mins>=540 && mins<780);   // Sáb 09:00–13:00
-    // Domingo: fechado
-    var st=$("introStatus"), tx=$("introStatusTxt");
-    if(open){ st.className="intro-status open"; tx.textContent="Aberto agora"; }
-    else    { st.className="intro-status closed"; tx.textContent="Fechado no momento"; }
-    if(day>=1 && day<=5) $("hrowWeek").classList.add("today");
-    else if(day===6)     $("hrowSat").classList.add("today");
-    else                 $("hrowSun").classList.add("today");
+    renderIntro();
   })();
   $("introEnter").addEventListener("click", function(){ $("intro").classList.add("hide"); });
 })();

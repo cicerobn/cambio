@@ -717,6 +717,24 @@
           <input class="input" id="admHorDomingo" type="text" placeholder="09h às 13h">
           <label class="cf-hor-fechado"><input type="checkbox" id="admHorDomingoF"> Fechado neste dia</label>
 
+          <div class="adm-sec">Horário de funcionamento</div>
+          <div class="adm-hint">Aparece na tela de entrada. Escreva o horário (ex.: <b>09h às 17h</b>) ou marque <b>Fechado</b>.</div>
+          <label class="field-label">Segunda a Sexta</label>
+          <div class="hor-row">
+            <input class="input" id="admHorSemana" type="text" placeholder="Ex.: 09h às 17h">
+            <label class="hor-fech"><input type="checkbox" id="admHorSemanaF"> Fechado</label>
+          </div>
+          <label class="field-label">Sábado</label>
+          <div class="hor-row">
+            <input class="input" id="admHorSabado" type="text" placeholder="Ex.: 09h às 13h">
+            <label class="hor-fech"><input type="checkbox" id="admHorSabadoF"> Fechado</label>
+          </div>
+          <label class="field-label">Domingo</label>
+          <div class="hor-row">
+            <input class="input" id="admHorDomingo" type="text" placeholder="Ex.: 09h às 12h">
+            <label class="hor-fech"><input type="checkbox" id="admHorDomingoF"> Fechado</label>
+          </div>
+
           <div class="adm-sec">Cotação do dia</div>
           <label class="field-label">1 Real (BRL) em Guarani</label>
           <input class="input" id="rBRL" type="number" min="0" step="1">
@@ -893,6 +911,11 @@
 .cf-av-toggle{display:flex;align-items:center;gap:9px;cursor:pointer;margin:2px 0 10px;
   font-weight:700;color:var(--ink)}
 .cf-av-toggle input{width:auto;margin:0}
+.hor-row{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.hor-row .input{flex:1;margin:0}
+.hor-row .input:disabled{opacity:.45}
+.hor-fech{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;color:var(--ink);font-weight:700;font-size:.85rem;cursor:pointer}
+.hor-fech input{width:auto;margin:0}
 .cf-hor-fechado{display:flex;align-items:center;gap:8px;margin:6px 0 10px;font-weight:700;color:var(--ink);font-size:.88rem;cursor:pointer}
 .cf-hor-fechado input{width:auto;margin:0}
 </style>
@@ -1534,6 +1557,7 @@
       if($("admHorDomingo")) $("admHorDomingo").value=(H.domingo&&H.domingo.txt)||"";
       if($("admHorDomingoF")) $("admHorDomingoF").checked=!!(H.domingo&&H.domingo.fechado);
     })();
+    syncHorFechado();
     $("admPontos").value = pontosToText();
     $("admErr2").textContent = "";
     setAdmTab("pedidos");
@@ -1596,6 +1620,15 @@
     var ta=$("admAvisoTxt");
     if(ta) ta.addEventListener("input", function(){ this.dataset.tipo=""; });  // texto editado à mão => ícone padrão 📢
   })();
+  // horários: acinzenta o campo de texto quando "Fechado" está marcado
+  function syncHorFechado(){
+    [["admHorSemanaF","admHorSemana"],["admHorSabadoF","admHorSabado"],["admHorDomingoF","admHorDomingo"]].forEach(function(p){
+      var cb=$(p[0]), inp=$(p[1]); if(cb&&inp) inp.disabled=cb.checked;
+    });
+  }
+  ["admHorSemanaF","admHorSabadoF","admHorDomingoF"].forEach(function(id){
+    var cb=$(id); if(cb) cb.addEventListener("change", syncHorFechado);
+  });
   (function(){ var _cp=$("admChangePass"); if(_cp) _cp.addEventListener("click", cfChangePassword); })();
   $("admResetFees").addEventListener("click", function(){ cfg.tiers = defaultTiers(); buildAdminTiers(); });
   (function(){ var _a=$("admAddTier"); if(_a) _a.addEventListener("click", tierAddRow); })();

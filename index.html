@@ -986,7 +986,9 @@
     return { semana:one(h.semana,"09h às 17h"), sabado:one(h.sabado,"09h às 13h"), domingo:one(h.domingo,"") };
   }
   function parseHoras(txt){
-    var m=String(txt||"").match(/(\d{1,2})(?:[:h](\d{2}))?\s*(?:às|as|a|-|–|até|ate)\s*(\d{1,2})(?:[:h](\d{2}))?/i);
+    // entende "09h às 17h", "9 às 14", "09:00 às 13:30", "9h30 às 17h", "8h-12h" etc.
+    // o "h?s?" após cada número engole o sufixo "h"/"hs" (ex.: 14h) que antes quebrava a leitura
+    var m=String(txt||"").toLowerCase().match(/(\d{1,2})(?:[:h](\d{2}))?\s*h?s?\s*(?:às|ás|as|a|-|–|—|até|ate)\s*(\d{1,2})(?:[:h](\d{2}))?\s*h?s?/i);
     if(!m) return null;
     var i=(+m[1])*60+(+(m[2]||0)), f=(+m[3])*60+(+(m[4]||0));
     if(isNaN(i)||isNaN(f)||f<=i) return null;

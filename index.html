@@ -1177,6 +1177,15 @@
   function pedidosSaveAll(list){ try{ localStorage.setItem(PEDIDOS_KEY, JSON.stringify(list)); }catch(e){} }
   function pedidoAdd(p){ var list=pedidosLoad(); list.unshift(p); pedidosSaveAll(list); }
   function pedidoSetStatus(id,status){ var list=pedidosLoad(); for(var i=0;i<list.length;i++){ if(list[i].id===id){ list[i].status=status; break; } } pedidosSaveAll(list); }
+  // Aprovar/descartar: muda na tela NA HORA e manda pra nuvem depois, em segundo plano.
+  // Antes o painel parecia lento porque a tela esperava as idas e vindas da internet.
+  function aplicaStatus(id,status){
+    pedidoSetStatus(id,status);
+    if(status==="aprovado") cfDelivOnApprove(id);
+    renderPedidos();
+    cfPedidoCloudStatus(id,status);
+    if(status==="aprovado") cfPushPedido(id);
+  }
 
   function novoPedido(cliente){
     var now=new Date();
@@ -1304,7 +1313,8 @@
       var tot=g.items.reduce(function(a,p){ return a+(Number(p.valor_reais)||0); },0);
       h+='<div class="ped-group"><button type="button" class="ped-group-head'+(open?" open":"")+'" data-day="'+g.date+'"><span class="pg-caret">▸</span><span class="pg-date">'+fmtDateLabel(g.date)+'</span><span class="pg-meta">'+g.items.length+' op · '+fmtBRL(tot)+'</span></button>';
       h+='<div class="ped-group-body" style="display:'+(open?"block":"none")+'">';
-      g.items.forEach(function(p){ h+=pedCardHtml(p); });
+      // só monta os cartões do dia que está ABERTO — com muitos pedidos, montar todos deixava a tela travada a cada clique
+      if(open) g.items.forEach(function(p){ h+=pedCardHtml(p); });
       h+='</div></div>';
     });
     $("pedList").innerHTML=h;
@@ -1676,8 +1686,8 @@
     var head=e.target.closest(".ped-group-head");
     if(head){ var dk=head.getAttribute("data-day"); pedExpanded[dk]=!head.classList.contains("open"); renderPedidos(); return; }
     var a=e.target.closest(".btn-apr"), d=e.target.closest(".btn-desc"), x=e.target.closest(".btn-del"), r=e.target.closest(".btn-rest"), c=e.target.closest(".btn-canc");
-    if(a){ pedidoSetStatus(a.dataset.id,"aprovado"); cfPedidoCloudStatus(a.dataset.id,"aprovado"); cfDelivOnApprove(a.dataset.id); renderPedidos(); showToast(); cfPushPedido(a.dataset.id); }
-    else if(d){ pedidoSetStatus(d.dataset.id,"descartado"); cfPedidoCloudStatus(d.dataset.id,"descartado"); renderPedidos(); }
+    if(a){ aplicaStatus(a.dataset.id,"aprovado"); showToast(); }
+    else if(d){ aplicaStatus(d.dataset.id,"descartado"); }
     else if(c){ cfCancelOp(c.dataset.id); }
     else if(x){ if(confirm("Excluir de vez? Esta operação será apagada e não poderá ser recuperada.")) cfDeleteOp(x.dataset.id); }
     else if(r){ cfRestoreOp(r.dataset.id); }
@@ -1690,8 +1700,16 @@
   var CF_SB_KEY="sb_publishable_Gq9WhodN8Dp1csDGSkvnzw_Kx8nXKvt";
   var CF_OWNER_EMAIL="";   // e-mail do cambista (preenche o login automaticamente)
   var CF_PUSHED_KEY="cfPushedPedidos";
-  var cfsb=null, cfUser=null, cfCloudOps=null;
+  var CF_PEND_KEY="cfPedidosStatusPendente";
+  var cfsb=null, cfUser=null;
   function cfReady(){ return !!cfsb; }
+
+  // Status trocado aqui que a nuvem ainda não confirmou. Guarda pra (1) tentar de novo sozinho
+  // e (2) a busca automática não trazer o status velho por cima do que o cambista acabou de marcar.
+  function cfPendGet(){ try{ return JSON.parse(localStorage.getItem(CF_PEND_KEY))||{}; }catch(e){ return {}; } }
+  function cfPendSave(m){ try{ localStorage.setItem(CF_PEND_KEY,JSON.stringify(m)); }catch(e){} }
+  function cfPendAdd(id,status){ var m=cfPendGet(); m[id]=status; cfPendSave(m); }
+  function cfPendDel(id,status){ var m=cfPendGet(); if(m[id]===status||status==null){ delete m[id]; cfPendSave(m); } }
   (function(){ try{ if(window.supabase&&window.supabase.createClient){ cfsb=window.supabase.createClient(CF_SB_URL,CF_SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"cambio_sb_auth"}}); } else { console.warn("Supabase (Câmbio): biblioteca ausente."); } }catch(e){ console.error("CF init",e); } })();
 
   function cfPushedGet(){ try{ return JSON.parse(localStorage.getItem(CF_PUSHED_KEY))||{}; }catch(e){ return {}; } }
@@ -1794,65 +1812,85 @@
     var list=pedidosLoad(), p=null; for(var i=0;i<list.length;i++){ if(list[i].id===id){ p=list[i]; break; } }
     if(!p) return;
     var cid=await cfOpInsert(pedidoToOp(p));
-    if(cid){ pedidoPatch(id,{cloud_id:cid}); cfPushedAdd(id); await cfOpsPull(); renderResumo(); }
+    if(cid){ pedidoPatch(id,{cloud_id:cid}); cfPushedAdd(id); }
   }
-  async function cfBackfill(){
-    if(!cfReady()||!cfUser) return;
-    var pushed=cfPushedGet(), list=pedidosLoad();
-    for(var i=0;i<list.length;i++){ var p=list[i]; if(p.status==="aprovado" && !pushed[p.id]){ var cid=await cfOpInsert(pedidoToOp(p)); if(cid){ pedidoPatch(p.id,{cloud_id:cid}); cfPushedAdd(p.id); } } }
-  }
-  async function cfOpsPull(){
-    if(!cfReady()||!cfUser){ cfCloudOps=null; return; }
-    try{ var _d=new Date(Date.now()-40*86400000), _cut=_d.getFullYear()+"-"+pad2(_d.getMonth()+1)+"-"+pad2(_d.getDate()); var res=await cfsb.from("cambio_operacoes").select("op_date,created_at,valor_brl,valor_pyg,taxa").gte("op_date",_cut); if(res.error) throw res.error; cfCloudOps=res.data||[]; }  /* egress: só colunas usadas + últimos ~40 dias (cobre Hoje/Semana/Mês) */
-    catch(e){ console.error("opsPull",e); }
-  }
+  /* Sobre cambio_operacoes: cada aprovação grava a sua operação (cfPushPedido) e pronto.
+     - A LEITURA da tabela foi removida: os totais do "Resumo" saem dos PEDIDOS aprovados,
+       então baixá-la a cada aprovação/exclusão só gastava internet e segurava a tela.
+     - O antigo "backfill" também saiu: ao abrir o painel, ele reenviava todos os pedidos
+       aprovados que tinham vindo da nuvem (aprovados em OUTRO aparelho, que já haviam
+       gravado a operação lá). Isso era uma fila de centenas de gravações a cada abertura
+       do painel — deixava tudo lento e ainda duplicava linha em cambio_operacoes. */
   function cfDelivRemove(key){ cfDelivSaveAll(cfDelivLoad().filter(function(d){ return d.key!==key; })); }
 
   // ===== pedidos na nuvem (cambio_pedidos): cliente cria (anon), cambista gerencia (login) =====
   function pedidoToRow(p){ return { id:p.id, cliente:p.cliente||null, valor_reais:Number(p.valor_reais)||0, cotacao:Number(p.cotacao)||null, total_guarani:Number(p.total_guarani)||0, taxa_reais:Number(p.taxa_reais)||0, status:p.status||"pendente", observacao:p.observacao||null, created_at:p.created_at||new Date().toISOString() }; }
   function rowToPedido(r){ return { id:r.id, cliente:r.cliente||"", valor_reais:Number(r.valor_reais)||0, cotacao:Number(r.cotacao)||0, total_guarani:Number(r.total_guarani)||0, taxa_reais:Number(r.taxa_reais)||0, status:r.status||"pendente", observacao:r.observacao||"", created_at:r.created_at }; }
   async function cfPedidoCloudInsert(p){ if(!cfReady()) return false; try{ var row=pedidoToRow(p); var res=await cfsb.from("cambio_pedidos").insert(row); if(res.error && cfIsAuthErr(res.error) && await cfRefreshSession()){ res=await cfsb.from("cambio_pedidos").insert(row); } if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoInsert",e); return false; } }
-  async function cfPedidoCloudStatus(id,status){ if(!cfReady()||!cfUser) return false; try{ var res=await cfsb.from("cambio_pedidos").update({status:status}).eq("id",id); if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoStatus",e); return false; } }
+  async function cfPedidoCloudStatus(id,status){
+    cfPendAdd(id,status);                       // só sai da fila quando a nuvem confirmar
+    if(!cfReady()||!cfUser) return false;
+    try{
+      var res=await cfsb.from("cambio_pedidos").update({status:status}).eq("id",id);
+      if(res.error && cfIsAuthErr(res.error) && await cfRefreshSession()){ res=await cfsb.from("cambio_pedidos").update({status:status}).eq("id",id); }
+      if(res.error) throw res.error;
+      cfPendDel(id,status);
+      return true;
+    }catch(e){ console.error("pedidoStatus",e); return false; }   // fica na fila: o painel tenta de novo sozinho
+  }
+  // reenvia os status que ainda não confirmaram (queda de internet, sessão renovada etc.)
+  async function cfPendFlush(){
+    if(!cfReady()||!cfUser) return;
+    var m=cfPendGet(), ids=Object.keys(m), i;
+    for(i=0;i<ids.length;i++){ await cfPedidoCloudStatus(ids[i], m[ids[i]]); }
+  }
   async function cfPedidoCloudDelete(id){ if(!cfReady()||!cfUser) return false; try{ var res=await cfsb.from("cambio_pedidos").delete().eq("id",id); if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoDelete",e); return false; } }
+  function pedidosSig(list){ var s="",i; for(i=0;i<list.length;i++){ s+=list[i].id+":"+list[i].status+";"; } return s; }
   async function cfPedidosPull(){
     if(!cfReady()||!cfUser) return;
     try{
+      await cfPendFlush();   // primeiro manda o que ficou pendente daqui, depois lê
       var _d=new Date(Date.now()-90*86400000), cut=_d.getFullYear()+"-"+pad2(_d.getMonth()+1)+"-"+pad2(_d.getDate());
       var res=await cfsb.from("cambio_pedidos").select("id,cliente,valor_reais,cotacao,total_guarani,taxa_reais,status,observacao,created_at").gte("created_at",cut).order("created_at",{ascending:false}).range(0,4999);
       if(res.error) throw res.error;
-      var cloud=(res.data||[]).map(rowToPedido), seen={}; cloud.forEach(function(p){ seen[p.id]=1; });
-      var localOnly=pedidosLoad().filter(function(p){ return !seen[p.id]; });
-      for(var i=0;i<localOnly.length;i++){ await cfPedidoCloudInsert(localOnly[i]); }   // sobe pedidos locais que ainda não estão na nuvem
-      pedidosSaveAll(cloud.concat(localOnly));
-      renderPedidos();
+      var pend=cfPendGet(), locais=pedidosLoad(), locById={};
+      locais.forEach(function(p){ locById[p.id]=p; });
+      var cloud=(res.data||[]).map(function(r){
+        var p=rowToPedido(r), loc=locById[p.id];
+        if(loc && loc.cloud_id) p.cloud_id=loc.cloud_id;   // não perde o vínculo com a operação (senão "Cancelar" não a removia)
+        if(pend[p.id]) p.status=pend[p.id];                // status marcado aqui e ainda não confirmado não volta atrás
+        return p;
+      });
+      var seen={}; cloud.forEach(function(p){ seen[p.id]=1; });
+      var localOnly=locais.filter(function(p){ return !seen[p.id]; });
+      var nova=cloud.concat(localOnly);
+      if(pedidosSig(nova)!==pedidosSig(locais)){ pedidosSaveAll(nova); renderPedidos(); }   // só redesenha a lista se algo mudou
+      for(var i=0;i<localOnly.length;i++){ cfPedidoCloudInsert(localOnly[i]); }   // sobe os locais em segundo plano (sem segurar a tela)
     }catch(e){ console.error("pedidosPull",e); }
   }
-  async function cfDeleteOp(id){
+  // Excluir/cancelar/restaurar: a tela responde na hora; a nuvem é avisada em segundo plano.
+  function cfDeleteOp(id){
     var list=pedidosLoad(), p=null,i; for(i=0;i<list.length;i++){ if(list[i].id===id){ p=list[i]; break; } }
-    if(p && p.cloud_id) await cfOpDelete(p.cloud_id);
-    cfPedidoCloudDelete(id);
     cfDelivRemove(id);
-    pedidosSaveAll(pedidosLoad().filter(function(q){ return q.id!==id; }));
+    pedidosSaveAll(list.filter(function(q){ return q.id!==id; }));
     var pushed=cfPushedGet(); delete pushed[id]; try{ localStorage.setItem(CF_PUSHED_KEY,JSON.stringify(pushed)); }catch(e){}
-    await cfOpsPull(); renderPedidos(); showToast();
+    cfPendDel(id,null);
+    renderPedidos(); showToast();
+    if(p && p.cloud_id) cfOpDelete(p.cloud_id);
+    cfPedidoCloudDelete(id);
   }
   // Cancelar um pedido APROVADO: sai do Movimentado mas fica guardado na aba "Cancelados" (não some de vez)
-  async function cfCancelOp(id){
+  function cfCancelOp(id){
     var list=pedidosLoad(), p=null,i; for(i=0;i<list.length;i++){ if(list[i].id===id){ p=list[i]; break; } }
-    if(p && p.cloud_id) await cfOpDelete(p.cloud_id);        // remove a operação do movimentado (cambio_operacoes) em todos os aparelhos
+    var cloudId=p&&p.cloud_id;
     cfDelivRemove(id);
     pedidoPatch(id,{status:"cancelado", cloud_id:null});     // mantém o registro, agora como Cancelado
-    cfPedidoCloudStatus(id,"cancelado");                     // atualiza o status no cambio_pedidos
     var pushed=cfPushedGet(); delete pushed[id]; try{ localStorage.setItem(CF_PUSHED_KEY,JSON.stringify(pushed)); }catch(e){}
-    await cfOpsPull(); renderPedidos(); showToast();
+    renderPedidos(); showToast();
+    if(cloudId) cfOpDelete(cloudId);                         // tira a operação do movimentado (cambio_operacoes) em todos os aparelhos
+    cfPedidoCloudStatus(id,"cancelado");                     // atualiza o status no cambio_pedidos
   }
-  async function cfRestoreOp(id){
-    pedidoSetStatus(id,"aprovado");
-    cfPedidoCloudStatus(id,"aprovado");
-    cfDelivOnApprove(id);
-    renderPedidos();
-    cfPushPedido(id);
-  }
+  function cfRestoreOp(id){ aplicaStatus(id,"aprovado"); }
 
   // ---- login / selo ----
   function cfBadge(){
@@ -1873,10 +1911,10 @@
     $("cfLoginGo").disabled=false;
     if(r.error){ $("cfLoginErr").textContent="Login falhou: "+r.error.message; return; }
     cfUser=r.data.user; cfBadge(); cfCloseLogin();
-    await cfBackfill(); await cfOpsPull(); await cfPedidosPull(); renderPedidos();
+    await cfPedidosPull(); renderPedidos();
     if(__openAdminAfterLogin){ __openAdminAfterLogin=false; $("admOverlay").classList.add("show"); openAdminPanel(); }
   }
-  async function cfDoLogout(){ try{ await cfsb.auth.signOut(); }catch(e){} cfUser=null; cfCloudOps=null; cfBadge(); renderPedidos(); }
+  async function cfDoLogout(){ try{ await cfsb.auth.signOut(); }catch(e){} cfUser=null; cfBadge(); renderPedidos(); }
   async function cfChangePassword(){
     if(!cfReady()){ alert("Sem conexão com a nuvem."); return; }
     if(!cfUser){ alert("Entre na nuvem primeiro (abra o painel e faça login)."); return; }
@@ -1913,7 +1951,7 @@
     await cfCotacaoPull();        // público: atualiza a cotação no conversor (sem login)
     await cfConfigPull();         // público: pontos de retirada, delivery e taxas (sem login)
     await cfRefreshUser();        // restaura sessão salva
-    if(cfUser){ await cfBackfill(); await cfOpsPull(); await cfPedidosPull(); renderResumo(); }
+    if(cfUser){ await cfPedidosPull(); renderResumo(); }
     try{ cfsb.auth.onAuthStateChange(function(_e,s){ cfUser=s?s.user:null; cfBadge(); }); }catch(e){}
     // egress: enquanto o painel estiver aberto e a aba visível, atualiza os pedidos a cada 60s
     if(!window.__cfPedidosPoll){ window.__cfPedidosPoll=setInterval(function(){ try{ var ov=$("admOverlay"); if(cfUser && ov && ov.classList.contains("show") && document.visibilityState==='visible') cfPedidosPull(); }catch(e){} }, 60000); }

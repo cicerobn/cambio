@@ -27,6 +27,12 @@ neste arquivo** — ele é servido para qualquer visitante.
 
 Tabelas usadas: `cambio_cotacao`, `cambio_operacoes`, `cambio_pedidos`
 
+- `cambio_pedidos` é a fonte da verdade do painel: a lista **e** os totais do "Resumo"
+  saem dela.
+- `cambio_operacoes` é só um espelho histórico — o site **grava** nela quando um pedido é
+  aprovado, mas nunca lê. Não volte a ler essa tabela para montar o Resumo (era o que
+  deixava o painel lento).
+
 **Atenção: este repositório é PÚBLICO.** Qualquer pessoa vê o código. Redobre o cuidado com o que é escrito no arquivo.
 
 ## Convenções

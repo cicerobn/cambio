@@ -29,6 +29,13 @@ Tabelas usadas: `cambio_cotacao`, `cambio_operacoes`, `cambio_pedidos`
 
 **Atenção: este repositório é PÚBLICO.** Qualquer pessoa vê o código. Redobre o cuidado com o que é escrito no arquivo.
 
+## Outros sites no repositório
+
+- `medcompany/index.html` — site da **Med Company** (assessoria para estudantes
+  brasileiros de Medicina no Paraguai + imobiliária, em Ciudad del Este).
+  Mesmo formato: arquivo único, sem build. O número do WhatsApp fica na
+  constante `WHATSAPP_NUMERO` no fim do arquivo (ainda é um número de exemplo).
+
 ## Convenções
 
 - Identidade do git: `cicerobn <299460670+cicerobn@users.noreply.github.com>`.

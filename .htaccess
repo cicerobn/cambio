@@ -1,0 +1,11 @@
+# Hostinger (Apache). O index.html não pode ficar preso no cache do navegador:
+# o site muda cotação e taxas, e o cliente precisa receber sempre a versão nova.
+# Imagens e ícones, que quase não mudam, podem ficar guardados por um dia.
+<IfModule mod_headers.c>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  <FilesMatch "\.(png|svg|ico|xml|txt)$">
+    Header set Cache-Control "public, max-age=86400"
+  </FilesMatch>
+</IfModule>

@@ -86,6 +86,13 @@
     color:var(--green-2);border:1px solid var(--green-line);border-radius:999px;
     padding:5px 12px;font-size:.78rem;font-weight:600}
   .badge .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(22,164,90,.16)}
+  /* cotação não confirmada / de outro dia */
+  .badge.stale{background:#fff6e5;color:#8a5a00;border-color:#f0dcb0}
+  .badge.stale .dot{background:#e0a21a;box-shadow:0 0 0 3px rgba(224,162,26,.18)}
+  .rate-warn{display:none;margin-top:10px;padding:11px 13px;border-radius:12px;
+    background:#fff6e5;border:1px solid #f0dcb0;color:#7a4f00;font-size:.84rem;font-weight:600;line-height:1.4}
+  .rate-warn.show{display:block}
+  .rate-warn b{color:#5f3d00}
 
   /* converter rows */
   .clabel{font-size:.82rem;font-weight:600;color:var(--muted);margin:0 2px 8px}
@@ -551,7 +558,7 @@
     <section class="card">
       <div class="card-top">
         <span class="card-title">Cotação do dia</span>
-        <span class="badge"><span class="dot"></span>Online</span>
+        <span class="badge" id="rateBadge"><span class="dot"></span><span id="rateBadgeTxt">Online</span></span>
       </div>
 
       <!-- câmbio do dia -->
@@ -566,6 +573,7 @@
           </div>
         </div>
       </div>
+      <div class="rate-warn" id="rateWarn"></div>
 
       <!-- Você envia -->
       <div class="clabel" id="clabFrom">Você quer</div>
@@ -1074,11 +1082,49 @@
     }catch(e){}
   }
 
+  // ===== frescor da cotação =====
+  // A cotação fica guardada no aparelho do cliente. Se ele deixa a página aberta por dias
+  // (ou ela volta do cache do celular) e a nuvem não responde, ele continua vendo o valor
+  // velho achando que é o de hoje — e o câmbio sai errado, com prejuízo pro cambista.
+  // Por isso o site reconfere sempre que o cliente volta pra tela e AVISA quando a cotação
+  // não é de hoje ou não pôde ser confirmada.
+  var cotConfirmada=false;   // conseguiu falar com a nuvem nesta sessão?
+  function cotData(){
+    var d=cfg.updatedISO ? new Date(cfg.updatedISO) : null;
+    if(d && !isNaN(d.getTime())) return d;
+    var m=String(cfg.updated||"").match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return m ? new Date(+m[3], (+m[2])-1, +m[1]) : null;
+  }
+  function cotEhDeHoje(){
+    var d=cotData(); if(!d) return false;
+    var n=new Date();
+    return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+  }
+  function cotQuando(){ return String(cfg.updated||"").split("•")[0].trim(); }
+  function cotSuspeita(){ return !cotConfirmada || !cotEhDeHoje(); }
+  function renderCotStatus(){
+    var b=$("rateBadge"), t=$("rateBadgeTxt"), w=$("rateWarn");
+    if(!b||!t||!w) return;
+    var quando=esc(cotQuando());
+    if(!cotConfirmada){
+      b.classList.add("stale"); t.textContent="Sem conexão";
+      w.innerHTML="Não consegui confirmar a cotação agora. O valor acima é de <b>"+quando+"</b> e pode estar desatualizado — <b>confirme no WhatsApp antes de fechar</b>.";
+      w.classList.add("show");
+    } else if(!cotEhDeHoje()){
+      b.classList.add("stale"); t.textContent="Cotação de "+quando;
+      w.innerHTML="Esta cotação é de <b>"+quando+"</b>, não de hoje. <b>Confirme no WhatsApp antes de fechar.</b>";
+      w.classList.add("show");
+    } else {
+      b.classList.remove("stale"); t.textContent="Online";
+      w.classList.remove("show"); w.innerHTML="";
+    }
+    try{ buildWA(lastWAValid); }catch(e){}   // o texto do WhatsApp acompanha o aviso
+  }
+
   var CUR = {
     BRL:{ code:"BRL", name:"Real",    pre:"R$",  dec:2, flag:flagBR },
     PYG:{ code:"PYG", name:"Guarani", pre:"Gs.", dec:0, flag:flagPY }
-  };
-  var ORDER = ["BRL","PYG"];
+  };  var ORDER = ["BRL","PYG"];
 
   function flagBR(){return '<svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="18" fill="#179b3e"/><path d="M18 5L31 18 18 31 5 18z" fill="#fcd116"/><circle cx="18" cy="18" r="6.2" fill="#1c3d8f"/></svg>';}
   function flagPY(s){return '<svg viewBox="0 0 36 36"><defs><clipPath id="py'+s+'"><circle cx="18" cy="18" r="18"/></clipPath></defs><g clip-path="url(#py'+s+')"><rect width="36" height="12" fill="#d52b1e"/><rect width="36" height="12" y="12" fill="#fff"/><rect width="36" height="12" y="24" fill="#0038a8"/></g></svg>';}
@@ -1103,6 +1149,7 @@
         if(typeof s.rBRL==="number" && s.rBRL>0) c.rBRL=s.rBRL;
         if(typeof s.pin==="string" && s.pin) c.pin=s.pin;
         if(typeof s.updated==="string" && s.updated) c.updated=s.updated;
+        if(typeof s.updatedISO==="string" && s.updatedISO) c.updatedISO=s.updatedISO;
         if(typeof s.deliveryFee==="number" && s.deliveryFee>=0) c.deliveryFee=s.deliveryFee;
         if(Array.isArray(s.fees) && s.fees.length===13) c.fees=s.fees.map(Number);
         if(Array.isArray(s.tiers) && s.tiers.length) c.tiers=normalizeTiers(s.tiers);
@@ -1262,12 +1309,16 @@
   }
   function fmtR(n){ return "R$ " + fmt(n,2); }
   function waText(op, nome){
-    return [
+    var l = [
       nome ? "Nome: "+nome : "Olá! Gostaria de fazer este câmbio:",
       "Quero trocar: "+fmtG(op.total_guarani),
-      "Total a pagar: "+fmtR(op.total),
-      "Fico no aguardo da sua confirmação. Obrigado(a)!"
-    ].join("\n");
+      // a cotação e a data que o CLIENTE viu na tela: assim o cambista confere na hora
+      "Cotação no site: 1 BRL = "+grp(Math.round(op.cotacao))+" PYG ("+cotQuando()+")",
+      "Total a pagar: "+fmtR(op.total)
+    ];
+    if(cotSuspeita()) l.push("*ATENÇÃO: o site não confirmou esta cotação agora — por favor confira antes de fechar.*");
+    l.push("Fico no aguardo da sua confirmação. Obrigado(a)!");
+    return l.join("\n");
   }
 
   function openOrderModal(){
@@ -1551,7 +1602,9 @@
     buildWA(ok && !guaraniQuebrado);
   }
 
+  var lastWAValid=false;
   function buildWA(valid){
+    lastWAValid=!!valid;
     var msg = (valid && lastOp) ? waText(lastOp, null)
             : "Olá, tudo bem? Gostaria de fazer um câmbio, pode me ajudar?";
     $("waBtn").href = "https://wa.me/" + waNum() + "?text=" + encodeURIComponent(msg);
@@ -1648,7 +1701,9 @@
     if(pickIdx >= cfg.pontos.length) pickIdx = 0;
     var d = new Date(), p = function(n){ return ("0"+n).slice(-2); };
     cfg.updated = p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear();
-    saveCfg(); buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); renderIntro(); showToast();
+    cfg.updatedISO = d.toISOString();
+    cotConfirmada = true;   // o próprio cambista acabou de definir a cotação neste aparelho
+    saveCfg(); buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); renderIntro(); renderCotStatus(); showToast();
     if(cfUser){ cfCotacaoPush(); cfConfigPush(); } else if(cfReady()) alert("Salvo neste aparelho. Para atualizar nos outros aparelhos/no site, entre na nuvem (botão \"entrar\" no topo do painel) e salve de novo.");
     closeAdmin();
   }
@@ -1785,15 +1840,40 @@
   function cfDelivOnApprove(id){ var list=pedidosLoad(),p=null,i; for(i=0;i<list.length;i++){ if(list[i].id===id){ p=list[i]; break; } } if(p && /delivery/i.test(p.observacao||"") && !cfDelivHas(id)){ cfDelivAdd({ts:p.created_at, valor:Number(cfg.deliveryFee)||10, key:id, source:"pedido", cliente:p.cliente||""}); } }
   function cfDelivBackfill(){ var list=pedidosLoad(),i; for(i=0;i<list.length;i++){ var p=list[i]; if(p.status==="aprovado" && /delivery/i.test(p.observacao||"") && !cfDelivHas(p.id)){ cfDelivAdd({ts:p.created_at, valor:Number(cfg.deliveryFee)||10, key:p.id, source:"pedido", cliente:p.cliente||""}); } } }
 
-  // ---- cotação (leitura pública; escrita exige login) ----
-  async function cfCotacaoPull(){
-    if(!cfReady()) return;
+  // ---- cotação + config (leitura pública; escrita exige login) ----
+  // Uma requisição só: rate, updated_at e config estão todos na MESMA linha (cambio_cotacao id=1).
+  // Antes eram duas leituras da mesma linha a cada carregamento.
+  // Fallback: se a biblioteca do Supabase não carregar (CDN bloqueada ou lenta na rede do
+  // cliente), busca a cotação direto na API REST com a MESMA chave pública. Sem isto, esse
+  // cliente ficaria com a cotação velha salva no aparelho dele sem ninguém perceber.
+  async function cotacaoFetchDireto(){
     try{
-      var res=await cfsb.from("cambio_cotacao").select("rate,updated_at").eq("id",1).limit(1);
-      if(res.error) throw res.error;
-      var row=(res.data&&res.data[0])||null;
-      if(row && Number(row.rate)>0){ cfg.rBRL=Number(row.rate); if(row.updated_at) cfg.updated=fmtUpdFromISO(row.updated_at); saveCfg(); buildTaxList(); calc(); }
-    }catch(e){ console.error("cotacaoPull",e); }
+      var r=await fetch(CF_SB_URL+"/rest/v1/cambio_cotacao?id=eq.1&select=rate,updated_at,config",
+        { headers:{ apikey:CF_SB_KEY, Authorization:"Bearer "+CF_SB_KEY }, cache:"no-store" });
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      var d=await r.json();
+      return (d && d[0]) || null;
+    }catch(e){ console.error("cotacaoDireto",e); return null; }
+  }
+  async function cfCotacaoPull(){
+    var row=null;
+    if(cfReady()){
+      try{
+        var res=await cfsb.from("cambio_cotacao").select("rate,updated_at,config").eq("id",1).limit(1);
+        if(res.error) throw res.error;
+        row=(res.data&&res.data[0])||null;
+      }catch(e){ console.error("cotacaoPull",e); row=null; }
+    }
+    if(!row) row=await cotacaoFetchDireto();
+    if(!row){ cotConfirmada=false; renderCotStatus(); return false; }
+    if(Number(row.rate)>0){
+      cfg.rBRL=Number(row.rate);
+      if(row.updated_at){ cfg.updated=fmtUpdFromISO(row.updated_at); cfg.updatedISO=String(row.updated_at); }
+      saveCfg(); buildTaxList(); calc();
+    }
+    aplicaConfig(row.config);
+    cotConfirmada=true; renderCotStatus();
+    return true;
   }
   // ---- sessão expirada: detecta, renova sozinho e, se não der, pede login ----
   function cfIsAuthErr(e){ var m=((e&&(e.message||e.msg||e.details))||"")+""; var c=String((e&&e.code)||""); return c==="PGRST301"||c==="401"||c==="42501"||/jwt|token|expired|not authenticated|unauthor|permission denied|invalid.*claim/i.test(m); }
@@ -1834,25 +1914,21 @@
       return true;
     }catch(e){ console.error("configPush",e); var m=((e&&(e.message||e.details))||"")+""; if(/config/i.test(m) && /(does not exist|schema cache|could not find)/i.test(m)){ alert("Falta criar a coluna 'config' no Supabase. Rode no SQL Editor:\n\nalter table public.cambio_cotacao add column if not exists config jsonb not null default '{}'::jsonb;"); } else if(cfIsAuthErr(e)){ cfSessionExpired(); } else { alert("Não consegui salvar as configurações na nuvem. Tente de novo."); } return false; }
   }
-  async function cfConfigPull(){
-    if(!cfReady()) return;
-    try{
-      var res=await cfsb.from("cambio_cotacao").select("config").eq("id",1).limit(1);
-      if(res.error) throw res.error;
-      var row=(res.data&&res.data[0])||null, cf=row&&row.config;
-      if(!cf || typeof cf!=="object") return;
-      var changed=false;
-      if(typeof cf.deliveryFee==="number" && cf.deliveryFee>=0){ cfg.deliveryFee=cf.deliveryFee; changed=true; }
-      if(Array.isArray(cf.tiers) && cf.tiers.length){ cfg.tiers=normalizeTiers(cf.tiers); changed=true; }
-      else if(Array.isArray(cf.fees) && cf.fees.length===13){ cfg.tiers=normalizeTiers(defaultTiers().map(function(t,i){ return {ate:t.ate, taxa:Number(cf.fees[i])||t.taxa}; })); changed=true; }
-      if(typeof cf.waNumber==="string" && cf.waNumber.replace(/\D/g,"")){ cfg.waNumber=cf.waNumber.replace(/\D/g,""); changed=true; }
-      if(typeof cf.waNumber2==="string"){ cfg.waNumber2=cf.waNumber2.replace(/\D/g,""); changed=true; }
-      if(cf.aviso && typeof cf.aviso==="object"){ cfg.aviso={ ativo:!!cf.aviso.ativo, texto:String(cf.aviso.texto||""), tipo:String(cf.aviso.tipo||"") }; changed=true; }
-      if(cf.horarios && typeof cf.horarios==="object"){ cfg.horarios=normalizeHorarios(cf.horarios); changed=true; }
-      if(Array.isArray(cf.pontos)){ cfg.pontos=cf.pontos.filter(function(p){ return p && typeof p.nome==="string" && p.nome.trim(); }).map(function(p){ return {nome:String(p.nome), endereco:String(p.endereco||""), maps:String(p.maps||"")}; }); changed=true; }
-      if(changed){ saveCfg(); try{ if(pickIdx>=(cfg.pontos||[]).length) pickIdx=0; buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); renderIntro(); }catch(e){} }
-    }catch(e){ console.error("configPull",e); }
+  // aplica o bloco "config" (vem junto com a cotação, na mesma linha do banco)
+  function aplicaConfig(cf){
+    if(!cf || typeof cf!=="object") return;
+    var changed=false;
+    if(typeof cf.deliveryFee==="number" && cf.deliveryFee>=0){ cfg.deliveryFee=cf.deliveryFee; changed=true; }
+    if(Array.isArray(cf.tiers) && cf.tiers.length){ cfg.tiers=normalizeTiers(cf.tiers); changed=true; }
+    else if(Array.isArray(cf.fees) && cf.fees.length===13){ cfg.tiers=normalizeTiers(defaultTiers().map(function(t,i){ return {ate:t.ate, taxa:Number(cf.fees[i])||t.taxa}; })); changed=true; }
+    if(typeof cf.waNumber==="string" && cf.waNumber.replace(/\D/g,"")){ cfg.waNumber=cf.waNumber.replace(/\D/g,""); changed=true; }
+    if(typeof cf.waNumber2==="string"){ cfg.waNumber2=cf.waNumber2.replace(/\D/g,""); changed=true; }
+    if(cf.aviso && typeof cf.aviso==="object"){ cfg.aviso={ ativo:!!cf.aviso.ativo, texto:String(cf.aviso.texto||""), tipo:String(cf.aviso.tipo||"") }; changed=true; }
+    if(cf.horarios && typeof cf.horarios==="object"){ cfg.horarios=normalizeHorarios(cf.horarios); changed=true; }
+    if(Array.isArray(cf.pontos)){ cfg.pontos=cf.pontos.filter(function(p){ return p && typeof p.nome==="string" && p.nome.trim(); }).map(function(p){ return {nome:String(p.nome), endereco:String(p.endereco||""), maps:String(p.maps||"")}; }); changed=true; }
+    if(changed){ saveCfg(); try{ if(pickIdx>=(cfg.pontos||[]).length) pickIdx=0; buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); renderIntro(); }catch(e){} }
   }
+  async function cfConfigPull(){ return cfCotacaoPull(); }   // mesma linha do banco: uma leitura serve pros dois
 
   // ---- operações ----
   function pedidoToOp(p){ return { op_date:String(p.created_at||"").slice(0,10)||null, sentido:p.sentido||"BRL_PYG", valor_brl:Number(p.valor_reais)||0, valor_pyg:Number(p.total_guarani)||0, taxa:Number(taxaReaisDe(p))||0, cotacao:Number(p.cotacao)||null }; }
@@ -2008,15 +2084,32 @@
 
   async function cfCloudInit(){
     cfBadge();
+    renderCotStatus();            // até confirmar na nuvem, a cotação da tela é "não confirmada"
     cfDelivBackfill();            // registra delivery de pedidos já aprovados (local)
-    await cfCotacaoPull();        // público: atualiza a cotação no conversor (sem login)
-    await cfConfigPull();         // público: pontos de retirada, delivery e taxas (sem login)
+    await cfCotacaoPull();        // público: cotação + config numa leitura só (sem login)
     await cfRefreshUser();        // restaura sessão salva
     if(cfUser){ await cfPedidosPull(); renderResumo(); }
     try{ cfsb.auth.onAuthStateChange(function(_e,s){ cfUser=s?s.user:null; cfBadge(); }); }catch(e){}
     // egress: enquanto o painel estiver aberto e a aba visível, atualiza os pedidos a cada 60s
     if(!window.__cfPedidosPoll){ window.__cfPedidosPoll=setInterval(function(){ try{ var ov=$("admOverlay"); if(cfUser && ov && ov.classList.contains("show") && document.visibilityState==='visible') cfPedidosPull(); }catch(e){} }, 60000); }
   }
+
+  // O cliente deixa a página aberta no celular por dias. Sem isto, ele seguiria vendo a
+  // cotação de quando abriu: reconfere ao voltar pra tela e de tempos em tempos.
+  (function vigiaCotacao(){
+    var ultima=Date.now();
+    function revalida(forca){
+      if(document.visibilityState!=="visible") return;
+      var agora=Date.now();
+      if(agora-ultima < (forca?15000:60000)) return;   // segura o tranco: no máximo 1 leitura por minuto
+      ultima=agora; cfCotacaoPull();
+    }
+    document.addEventListener("visibilitychange", function(){ revalida(true); });
+    window.addEventListener("focus", function(){ revalida(true); });
+    window.addEventListener("pageshow", function(e){ if(e.persisted) revalida(true); });  // voltou do cache do navegador
+    window.addEventListener("online", function(){ revalida(true); });
+    setInterval(function(){ revalida(false); }, 300000);   // a cada 5 min com a tela aberta
+  })();
 
   document.addEventListener("click", function(e){
     if(!e.target.closest) return;

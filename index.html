@@ -558,7 +558,7 @@
     <section class="card">
       <div class="card-top">
         <span class="card-title">Cotação do dia</span>
-        <span class="badge" id="rateBadge"><span class="dot"></span><span id="rateBadgeTxt">Online</span></span>
+        <span class="badge" id="rateBadge"><span class="dot"></span><span id="rateBadgeTxt">Atualizando…</span></span>
       </div>
 
       <!-- câmbio do dia -->
@@ -1086,9 +1086,12 @@
   // A cotação fica guardada no aparelho do cliente. Se ele deixa a página aberta por dias
   // (ou ela volta do cache do celular) e a nuvem não responde, ele continua vendo o valor
   // velho achando que é o de hoje — e o câmbio sai errado, com prejuízo pro cambista.
-  // Por isso o site reconfere sempre que o cliente volta pra tela e AVISA quando a cotação
-  // não é de hoje ou não pôde ser confirmada.
-  var cotConfirmada=false;   // conseguiu falar com a nuvem nesta sessão?
+  // Por isso o site reconfere sempre que o cliente volta pra tela e AVISA quando NÃO
+  // conseguiu confirmar a cotação na nuvem.
+  //   "verificando" = ainda consultando (não mostra aviso nenhum: senão ele piscava a cada abertura)
+  //   "ok"          = confirmada na nuvem: é o valor que o cambista deixou salvo
+  //   "falhou"      = tentou, tentou de novo e não conseguiu -> aí sim avisa
+  var cotEstado="verificando", cotUltimoOk=0, cotFalhas=0;
   function cotData(){
     var d=cfg.updatedISO ? new Date(cfg.updatedISO) : null;
     if(d && !isNaN(d.getTime())) return d;
@@ -1101,21 +1104,17 @@
     return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
   }
   function cotQuando(){ return String(cfg.updated||"").split("•")[0].trim(); }
-  function cotSuspeita(){ return !cotConfirmada || !cotEhDeHoje(); }
+  // suspeita = não deu pra confirmar; ou ainda está consultando e o valor guardado é de outro dia
+  function cotSuspeita(){ return cotEstado==="falhou" || (cotEstado==="verificando" && !cotEhDeHoje()); }
   function renderCotStatus(){
     var b=$("rateBadge"), t=$("rateBadgeTxt"), w=$("rateWarn");
     if(!b||!t||!w) return;
-    var quando=esc(cotQuando());
-    if(!cotConfirmada){
+    if(cotEstado==="falhou"){
       b.classList.add("stale"); t.textContent="Sem conexão";
-      w.innerHTML="Não consegui confirmar a cotação agora. O valor acima é de <b>"+quando+"</b> e pode estar desatualizado — <b>confirme no WhatsApp antes de fechar</b>.";
-      w.classList.add("show");
-    } else if(!cotEhDeHoje()){
-      b.classList.add("stale"); t.textContent="Cotação de "+quando;
-      w.innerHTML="Esta cotação é de <b>"+quando+"</b>, não de hoje. <b>Confirme no WhatsApp antes de fechar.</b>";
+      w.innerHTML="Não consegui confirmar a cotação agora. O valor acima é de <b>"+esc(cotQuando())+"</b> e pode estar desatualizado — <b>confirme no WhatsApp antes de fechar</b>.";
       w.classList.add("show");
     } else {
-      b.classList.remove("stale"); t.textContent="Online";
+      b.classList.remove("stale"); t.textContent=(cotEstado==="ok") ? "Online" : "Atualizando…";
       w.classList.remove("show"); w.innerHTML="";
     }
     try{ buildWA(lastWAValid); }catch(e){}   // o texto do WhatsApp acompanha o aviso
@@ -1701,7 +1700,7 @@
     var d = new Date(), p = function(n){ return ("0"+n).slice(-2); };
     cfg.updated = p(d.getDate())+"/"+p(d.getMonth()+1)+"/"+d.getFullYear();
     cfg.updatedISO = d.toISOString();
-    cotConfirmada = true;   // o próprio cambista acabou de definir a cotação neste aparelho
+    cotEstado = "ok"; cotUltimoOk = Date.now(); cotFalhas = 0;   // o próprio cambista acabou de definir a cotação neste aparelho
     saveCfg(); buildTaxList(); renderPickup(); updatePickupVisibility(); calc(); renderAviso(); renderIntro(); renderCotStatus(); showToast();
     if(cfUser){ cfCotacaoPush(); cfConfigPush(); } else if(cfReady()) alert("Salvo neste aparelho. Para atualizar nos outros aparelhos/no site, entre na nuvem (botão \"entrar\" no topo do painel) e salve de novo.");
     closeAdmin();
@@ -1845,10 +1844,12 @@
   // Fallback: se a biblioteca do Supabase não carregar (CDN bloqueada ou lenta na rede do
   // cliente), busca a cotação direto na API REST com a MESMA chave pública. Sem isto, esse
   // cliente ficaria com a cotação velha salva no aparelho dele sem ninguém perceber.
+  // internet de celular às vezes "pendura" a requisição: sem prazo, o site ficaria esperando pra sempre
+  function comPrazo(p, ms){ return Promise.race([ Promise.resolve(p), new Promise(function(_,rej){ setTimeout(function(){ rej(new Error("demorou demais")); }, ms); }) ]); }
   async function cotacaoFetchDireto(){
     try{
-      var r=await fetch(CF_SB_URL+"/rest/v1/cambio_cotacao?id=eq.1&select=rate,updated_at,config",
-        { headers:{ apikey:CF_SB_KEY, Authorization:"Bearer "+CF_SB_KEY }, cache:"no-store" });
+      var r=await comPrazo(fetch(CF_SB_URL+"/rest/v1/cambio_cotacao?id=eq.1&select=rate,updated_at,config",
+        { headers:{ apikey:CF_SB_KEY, Authorization:"Bearer "+CF_SB_KEY }, cache:"no-store" }), 8000);
       if(!r.ok) throw new Error("HTTP "+r.status);
       var d=await r.json();
       return (d && d[0]) || null;
@@ -1858,20 +1859,30 @@
     var row=null;
     if(cfReady()){
       try{
-        var res=await cfsb.from("cambio_cotacao").select("rate,updated_at,config").eq("id",1).limit(1);
+        var res=await comPrazo(cfsb.from("cambio_cotacao").select("rate,updated_at,config").eq("id",1).limit(1), 8000);
         if(res.error) throw res.error;
         row=(res.data&&res.data[0])||null;
       }catch(e){ console.error("cotacaoPull",e); row=null; }
     }
     if(!row) row=await cotacaoFetchDireto();
-    if(!row){ cotConfirmada=false; renderCotStatus(); return false; }
-    if(Number(row.rate)>0){
-      cfg.rBRL=Number(row.rate);
-      if(row.updated_at){ cfg.updated=fmtUpdFromISO(row.updated_at); cfg.updatedISO=String(row.updated_at); }
-      saveCfg(); buildTaxList(); calc();
+    if(!row){
+      cotFalhas++;
+      if(Date.now()-cotUltimoOk < 15*60000){ /* confirmada há pouco: uma oscilação da rede não vira alarme */ }
+      else if(cotFalhas<2){ setTimeout(cfCotacaoPull, 3000); }   // 1ª falha: tenta de novo antes de avisar
+      else { cotEstado="falhou"; }
+      renderCotStatus();
+      return false;
     }
-    aplicaConfig(row.config);
-    cotConfirmada=true; renderCotStatus();
+    cotFalhas=0; cotUltimoOk=Date.now(); cotEstado="ok";
+    try{
+      if(Number(row.rate)>0){
+        cfg.rBRL=Number(row.rate);
+        if(row.updated_at){ cfg.updated=fmtUpdFromISO(row.updated_at); cfg.updatedISO=String(row.updated_at); }
+        saveCfg(); buildTaxList(); calc();
+      }
+      aplicaConfig(row.config);
+    }catch(e){ console.error("cotacaoAplica",e); }
+    renderCotStatus();
     return true;
   }
   // ---- sessão expirada: detecta, renova sozinho e, se não der, pede login ----
@@ -2139,7 +2150,11 @@
     if(hl && hl.getAttribute("src")) $("introLogo").src = hl.getAttribute("src");
     renderIntro();
   })();
-  $("introEnter").addEventListener("click", function(){ $("intro").classList.add("hide"); });
+  $("introEnter").addEventListener("click", function(){
+    var it=$("intro"); it.classList.add("hide");
+    // tira a tela de entrada de vez depois do efeito: em celular lento ela podia ficar "fantasma" por cima do site
+    setTimeout(function(){ it.style.display="none"; }, 450);
+  });
 })();
 </script>
 

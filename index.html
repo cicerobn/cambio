@@ -1312,11 +1312,10 @@
     var l = [
       nome ? "Nome: "+nome : "Olá! Gostaria de fazer este câmbio:",
       "Quero trocar: "+fmtG(op.total_guarani),
-      // a cotação e a data que o CLIENTE viu na tela: assim o cambista confere na hora
-      "Cotação no site: 1 BRL = "+grp(Math.round(op.cotacao))+" PYG ("+cotQuando()+")",
       "Total a pagar: "+fmtR(op.total)
     ];
-    if(cotSuspeita()) l.push("*ATENÇÃO: o site não confirmou esta cotação agora — por favor confira antes de fechar.*");
+    // só quando o site não conseguiu confirmar a cotação: o cambista precisa conferir antes de fechar
+    if(cotSuspeita()) l.push("*ATENÇÃO: o site não confirmou a cotação agora — por favor confira antes de fechar.*");
     l.push("Fico no aguardo da sua confirmação. Obrigado(a)!");
     return l.join("\n");
   }

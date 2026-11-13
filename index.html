@@ -93,6 +93,11 @@
     background:#fff6e5;border:1px solid #f0dcb0;color:#7a4f00;font-size:.84rem;font-weight:600;line-height:1.4}
   .rate-warn.show{display:block}
   .rate-warn b{color:#5f3d00}
+  /* Enquanto a cotação ainda está sendo consultada e a que está guardada no aparelho é de OUTRO dia,
+     os valores ficam borrados e o botão de pedido espera: ninguém lê (nem tira print de) número velho. */
+  .card.cot-loading .rate-v,.card.cot-loading #updText,.card.cot-loading #result,
+  .card.cot-loading #vRate,.card.cot-loading #vBase,.card.cot-loading #vTotal{filter:blur(6px);opacity:.5}
+  .card.cot-loading .wa{opacity:.5;pointer-events:none;animation:none}
 
   /* converter rows */
   .clabel{font-size:.82rem;font-weight:600;color:var(--muted);margin:0 2px 8px}
@@ -1137,6 +1142,8 @@
   function renderCotStatus(){
     var b=$("rateBadge"), t=$("rateBadgeTxt"), w=$("rateWarn");
     if(!b||!t||!w) return;
+    var card=b.closest ? b.closest(".card") : null;
+    if(card) card.classList.toggle("cot-loading", cotEstado==="verificando" && !cotEhDeHoje());
     if(cotEstado==="falhou"){
       b.classList.add("stale"); t.textContent="Sem conexão";
       w.innerHTML="Não consegui confirmar a cotação agora. O valor acima é de <b>"+esc(cotQuando())+"</b> e pode estar desatualizado — <b>confirme no WhatsApp antes de fechar</b>.";

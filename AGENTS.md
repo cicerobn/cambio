@@ -10,6 +10,30 @@ O usuário fala português — responda sempre em português.
 `index.html`. Não há build, nem `package.json`, nem framework. Para alterar,
 edite o próprio `index.html`.
 
+Ao lado dele ficam só arquivos de apoio:
+
+- `logo.png` — a logo (também é a imagem do link compartilhado). Não volte a embutir em
+  base64 no HTML: pesava 80 KB.
+- `robots.txt` e `sitemap.xml` — para o Google.
+- `.htaccess` — faz o `index.html` nunca ficar preso no cache do navegador (a Hostinger
+  respeita). Sem isso, correção publicada demora a chegar em quem já visitou.
+
+## A cotação na tela do cliente (cuidado: é dinheiro)
+
+A cotação fica guardada no aparelho do cliente (`localStorage`) e é reconferida na nuvem
+ao carregar, ao voltar para a aba e a cada 5 min. Já deu prejuízo quando ficava velha.
+Regras que não podem ser quebradas:
+
+- Estados em `cotEstado`: `verificando` (consultando, **sem** aviso), `ok`, `falhou`
+  (só depois de duas tentativas; aí aparece o aviso amarelo).
+- Enquanto está `verificando` e o valor guardado é de **outro dia**, os números ficam
+  borrados e o botão de pedido espera — o cliente não pode ler nem tirar print de valor velho.
+- Se a biblioteca do Supabase (CDN) não carregar, a cotação é buscada direto na API REST.
+- Não mostre aviso antes de a primeira consulta terminar: ele piscava a cada abertura e
+  parecia que o site estava quebrado.
+- A mensagem do WhatsApp **não** leva cotação nem data (pedido do dono). Só leva uma linha
+  de atenção quando a cotação não pôde ser confirmada.
+
 ## Onde está no ar
 
 Domínio: **cambio-figueredo.com.br**
@@ -40,4 +64,8 @@ Tabelas usadas: `cambio_cotacao`, `cambio_operacoes`, `cambio_pedidos`
 - Identidade do git: `cicerobn <299460670+cicerobn@users.noreply.github.com>`.
 - Mensagens de commit e comentários em português, explicando o efeito e o porquê.
 - Antes de publicar, abra o arquivo no navegador e confira clicando — não há
-  verificação automática neste tipo de projeto.
+  verificação automática neste tipo de projeto. Teste em tela de **celular** (é como os
+  clientes usam) e, mexendo na cotação, teste também com a rede lenta e sem rede.
+- Ao testar pedido, **não grave pedido de verdade**: ele aparece no painel do dono.
+  Intercepte o `POST` em `cambio_pedidos` e o `window.open` do WhatsApp.
+- O dono quer respostas curtas e diretas no chat.

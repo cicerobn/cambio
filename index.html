@@ -173,10 +173,7 @@
   .wa-top:hover{background:rgba(31,196,108,.2);transform:translateY(-1px)}
   .wa-top svg{width:19px;height:19px;flex:none;color:#2fd57f}
   .wa-top b{font-weight:700;color:#fff}
-  /* dica acima do botão: muita gente mandava print da tela em vez de tocar no botão */
-  .wa-hint{margin-top:18px;text-align:center;font-size:.86rem;font-weight:600;color:var(--ink-2);line-height:1.4}
-  .wa-hint b{color:var(--green-2)}
-  .wa{margin-top:9px;width:100%;display:flex;align-items:center;justify-content:center;gap:12px;
+  .wa{margin-top:18px;width:100%;display:flex;align-items:center;justify-content:center;gap:12px;
     background:linear-gradient(180deg,#1fc46c,#12924e);color:#fff;
     font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.22rem;letter-spacing:.2px;
     border:0;border-radius:16px;padding:16px 17px;cursor:pointer;text-decoration:none;
@@ -299,8 +296,7 @@
     .tax-row .va{font-size:.76rem;padding:2px 8px}
     .wa-top{margin-top:9px;padding:7px 13px 7px 10px;font-size:.78rem;gap:7px}
     .wa-top svg{width:17px;height:17px}
-    .wa-hint{margin-top:13px;font-size:.8rem}
-    .wa{margin-top:8px;padding:14px 15px;border-radius:14px;font-size:1.12rem;gap:11px}
+    .wa{margin-top:12px;padding:14px 15px;border-radius:14px;font-size:1.12rem;gap:11px}
     .wa svg{width:26px;height:26px}
     .foot{margin-top:13px;font-size:.7rem;line-height:1.55;color:#9d8755}
     .gear{width:36px;height:36px;bottom:10px;right:10px}
@@ -710,7 +706,6 @@
       <div class="taxwrap" id="taxAcc"><div class="tax-title">Tabela de taxas</div><div class="tax-list" id="taxList"><div class="tax-row"><span class="fa">Até R$ 100</span><span class="va">R$ 5</span></div><div class="tax-row"><span class="fa">R$ 101 – R$ 500</span><span class="va">R$ 10</span></div><div class="tax-row"><span class="fa">R$ 501 – R$ 1.000</span><span class="va">R$ 25</span></div><div class="tax-row"><span class="fa">R$ 1.001 – R$ 2.000</span><span class="va">R$ 30</span></div><div class="tax-row"><span class="fa">R$ 2.001 – R$ 3.000</span><span class="va">R$ 35</span></div><div class="tax-row"><span class="fa">R$ 3.001 – R$ 4.000</span><span class="va">R$ 40</span></div><div class="tax-row"><span class="fa">R$ 4.001 – R$ 5.000</span><span class="va">R$ 45</span></div><div class="tax-row"><span class="fa">R$ 5.001 – R$ 6.000</span><span class="va">R$ 55</span></div><div class="tax-row"><span class="fa">R$ 6.001 – R$ 7.000</span><span class="va">R$ 65</span></div><div class="tax-row"><span class="fa">R$ 7.001 – R$ 8.000</span><span class="va">R$ 75</span></div><div class="tax-row"><span class="fa">R$ 8.001 – R$ 9.000</span><span class="va">R$ 85</span></div><div class="tax-row"><span class="fa">R$ 9.001 – R$ 10.000</span><span class="va">R$ 95</span></div><div class="tax-row fx"><span class="fa">Acima de R$ 10.000</span><span class="va">Fixa R$ 100</span></div></div></div>
 
       <!-- whatsapp -->
-      <p class="wa-hint">Para pedir, <b>toque no botão verde</b> — não precisa mandar print.</p>
       <a class="wa" id="waBtn" href="https://wa.me/5575992638041?text=Ol%C3%A1!%20Gostaria%20de%20fazer%20este%20c%C3%A2mbio%3A%0AQuero%20trocar%3A%20Gs.%20100.000%0ATotal%20a%20pagar%3A%20R%24%2091%2C21%0AFico%20no%20aguardo%20da%20sua%20confirma%C3%A7%C3%A3o.%20Obrigado(a)!" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.22 8.22 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.82c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.25-.64.81-.79.97-.14.17-.29.18-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.23.25-.86.85-.86 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.14-1.18-.06-.1-.22-.16-.47-.28z"></path></svg>
         <span class="wa-t">Enviar pedido<small>pelo WhatsApp</small></span>

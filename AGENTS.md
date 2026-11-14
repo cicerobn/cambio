@@ -18,6 +18,18 @@ Ao lado dele ficam só arquivos de apoio:
 - `.htaccess` — faz o `index.html` nunca ficar preso no cache do navegador (a Hostinger
   respeita). Sem isso, correção publicada demora a chegar em quem já visitou.
 
+## Velocidade (o site roda em celular fraco e internet ruim)
+
+- A biblioteca do Supabase carrega com `async` e versão fixa. O site **não pode** depender
+  dela para abrir: a cotação vem direto da API REST se ela não chegou, e o pedido do cliente
+  também é gravado pela API REST se ela não vier. Só o painel do dono espera por ela
+  (`cfLibPronta`).
+- A tela de entrada (selo Aberto/Fechado e botão Entrar) é montada por um script curto logo
+  depois dela no HTML, antes do resto da página baixar. A regra de horário dele é a mesma de
+  `renderIntro()`: se mudar uma, mude a outra.
+- Animações só com `transform` e `opacity` (o celular faz isso sem travar). Nada de animar
+  `box-shadow`, `background` ou `filter` em loop, nem `backdrop-filter` em item fixo.
+
 ## A cotação na tela do cliente (cuidado: é dinheiro)
 
 A cotação fica guardada no aparelho do cliente (`localStorage`) e é reconferida na nuvem

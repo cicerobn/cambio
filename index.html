@@ -178,15 +178,16 @@
   .swap::before,.swap::after{content:"";position:absolute;inset:-1px;border-radius:50%;
     border:2px solid var(--green);opacity:0;pointer-events:none}
   .swap.go{animation:swapPop .55s cubic-bezier(.3,1.5,.4,1)}
-  .swap.go svg{animation:swapSpin .55s cubic-bezier(.65,0,.25,1)}
+  .swap svg{position:relative;z-index:1}
+  .swap.go svg{animation:swapSpin .55s cubic-bezier(.65,0,.25,1),swapIcon .55s linear}
+  .swap .swap-disc{position:absolute;inset:0;border-radius:50%;background:var(--green);opacity:0;transform:scale(.6);pointer-events:none}
+  .swap.go .swap-disc{animation:swapDisc .55s cubic-bezier(.3,1.4,.4,1)}
+  .row.swap-in-up,.row.swap-in-down{will-change:transform,opacity}
   .swap.go::before{animation:swapRing .6s ease-out}
   .swap.go::after{animation:swapRing .6s ease-out .12s}
-  @keyframes swapPop{
-    0%{transform:scale(1)}
-    22%{transform:scale(.8);background:var(--green);color:#fff}
-    58%{transform:scale(1.18);background:var(--green);color:#fff;box-shadow:0 0 0 6px rgba(22,164,90,.18),0 12px 26px -8px rgba(22,164,90,.7)}
-    100%{transform:scale(1);background:#fff;color:var(--green)}
-  }
+  @keyframes swapPop{0%{transform:scale(1)}22%{transform:scale(.8)}58%{transform:scale(1.18)}100%{transform:scale(1)}}
+  @keyframes swapDisc{0%{opacity:0;transform:scale(.6)}20%,62%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1)}}
+  @keyframes swapIcon{0%,15%{color:var(--green)}22%,62%{color:#fff}100%{color:var(--green)}}
   @keyframes swapSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
   @keyframes swapRing{0%{opacity:.75;transform:scale(1)}100%{opacity:0;transform:scale(2.4)}}
   .row.swap-in-up{animation:rowUp .5s cubic-bezier(.2,1.25,.35,1)}
@@ -220,24 +221,23 @@
     background:linear-gradient(180deg,#1fc46c,#12924e);color:#fff;
     font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.22rem;letter-spacing:.2px;
     border:0;border-radius:16px;padding:16px 17px;cursor:pointer;text-decoration:none;
-    box-shadow:0 16px 30px -14px rgba(22,164,90,.7);transition:transform .15s, box-shadow .2s;
-    animation:waPulse 2.2s ease-in-out infinite}
+    box-shadow:0 16px 30px -14px rgba(22,164,90,.7);transition:transform .15s, box-shadow .2s;position:relative}
+  .wa::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    box-shadow:0 0 0 3px rgba(31,196,108,.55);opacity:0;animation:waPulse 2.2s ease-out infinite}
   .wa:hover{transform:translateY(-1px)}
   .wa svg{width:28px;height:28px;flex:none}
   .wa .wa-t{display:flex;flex-direction:column;align-items:flex-start;line-height:1.15}
   .wa .wa-t small{font-family:'Inter',system-ui,sans-serif;font-weight:600;font-size:.76rem;letter-spacing:0;opacity:.92}
   /* anel verde pulsando em volta do botão, pra chamar o olho pra ele */
-  @keyframes waPulse{
-    0%,100%{box-shadow:0 16px 30px -14px rgba(22,164,90,.7),0 0 0 0 rgba(31,196,108,.55)}
-    55%{box-shadow:0 16px 30px -14px rgba(22,164,90,.7),0 0 0 10px rgba(31,196,108,0)}
-  }
+  /* só transform e opacity: o celular anima isso sem travar a rolagem */
+  @keyframes waPulse{0%{opacity:.9;transform:scale(1,1)}60%,100%{opacity:0;transform:scale(1.05,1.28)}}
 
   .foot{text-align:center;margin-top:22px;color:#8f7d57;font-size:.8rem;line-height:1.7}
   .foot b{color:#cbb069;font-weight:600}
 
   /* settings gear (discreto, só pro dono atualizar a cotação) */
   .gear{position:fixed;bottom:14px;right:14px;z-index:40;width:38px;height:38px;border-radius:50%;
-    border:1px solid rgba(199,154,58,.34);background:rgba(16,28,54,.78);backdrop-filter:blur(6px);
+    border:1px solid rgba(199,154,58,.34);background:rgba(16,28,54,.92);
     color:#c7a866;cursor:pointer;display:flex;align-items:center;justify-content:center;
     box-shadow:0 8px 18px -10px rgba(0,0,0,.5);opacity:.5;transition:opacity .2s, transform .3s}
   .gear:hover{opacity:1;transform:rotate(40deg)}
@@ -412,7 +412,8 @@
     background:#fff;border:1px solid var(--line);border-radius:7px;padding:2px 9px;font-size:.82rem}
   .tax-row.fx{background:linear-gradient(90deg,rgba(199,154,58,.12),transparent)}
   .tax-row.fx .va{border-color:rgba(199,154,58,.45);color:#9a751f}
-  .wa.disabled{opacity:.5;pointer-events:none;filter:grayscale(.15);animation:none}
+  .wa.disabled{opacity:.5;pointer-events:none;filter:grayscale(.15)}
+  .wa.disabled::after,.card.cot-loading .wa::after{animation:none;opacity:0}
   .adm-tiers{max-height:220px;overflow:auto;margin:4px 0 2px;border:1px solid var(--line);border-radius:12px;background:var(--field)}
   .adm-tier{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--line)}
   .adm-tier:last-child{border-bottom:0}
@@ -527,6 +528,10 @@
     filter:drop-shadow(0 8px 18px rgba(0,0,0,.45)) drop-shadow(0 0 18px rgba(199,154,58,.16))}
   .intro-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.4rem;
     color:var(--cream);letter-spacing:-.3px;margin-bottom:14px}
+  /* fica invisível até o site calcular se está aberto (evita mostrar "Fechado" e trocar em seguida) */
+  .intro-status{visibility:hidden}
+  .intro-status.pronto{visibility:visible;animation:fadeIn .2s ease both}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   .intro-status{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;border-radius:999px;border:1px solid;
     font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.86rem;margin:12px 0 18px}
   .intro-status .dot{width:9px;height:9px;border-radius:50%;flex:none}
@@ -585,12 +590,12 @@
   <div class="intro" id="intro">
     <div class="intro-card">
       <img class="intro-logo" id="introLogo" alt="Câmbio Figueredo" src="logo.png">
-      <div class="intro-status closed" id="introStatus">
-        <span class="dot"></span><span id="introStatusTxt">Fechado no momento</span>
+      <div class="intro-status" id="introStatus">
+        <span class="dot"></span><span id="introStatusTxt">&nbsp;</span>
       </div>
       <div class="hours">
-        <div class="hrow today" id="hrowWeek"><span class="hd">Segunda a Sexta</span><span class="hv">09h às 17h</span></div>
-        <div class="hrow today" id="hrowSat"><span class="hd">Sábado</span><span class="hv">09h às 13h</span></div>
+        <div class="hrow" id="hrowWeek"><span class="hd">Segunda a Sexta</span><span class="hv">09h às 17h</span></div>
+        <div class="hrow" id="hrowSat"><span class="hd">Sábado</span><span class="hv">09h às 13h</span></div>
         <div class="hrow" id="hrowSun"><span class="hd">Domingo</span><span class="hv off">Fechado</span></div>
       </div>
       <div class="cf-aviso-mini" id="cfAvisoIntro" style="display:none">
@@ -600,6 +605,37 @@
       <button class="intro-enter" id="introEnter" type="button">Entrar</button>
     </div>
   </div>
+  <script>
+  /* Tela de entrada pronta já no primeiro instante: calcula Aberto/Fechado com o horário salvo
+     no aparelho e liga o botão Entrar, sem esperar o resto do site baixar (antes o selo aparecia
+     "Fechado" e só depois trocava, e o Entrar demorava a responder). O script principal refaz o
+     mesmo cálculo depois, com o horário mais novo da nuvem. Mesma regra de renderIntro(). */
+  (function(){
+    try{
+      var H=null; try{ H=(JSON.parse(localStorage.getItem("cfCambiosCfg"))||{}).horarios; }catch(e){}
+      H=H||{}; function one(o,d){ o=o||{}; return { txt:String(o.txt||d||""), fechado:!!o.fechado }; }
+      H={ semana:one(H.semana,"09h às 17h"), sabado:one(H.sabado,"09h às 13h"), domingo:one(H.domingo,"") };
+      function parse(t){ var m=String(t||"").toLowerCase().match(/(\d{1,2})(?:[:h](\d{2}))?\s*h?s?\s*(?:às|ás|as|a|-|–|—|até|ate)\s*(\d{1,2})(?:[:h](\d{2}))?\s*h?s?/i);
+        if(!m) return null; var i=(+m[1])*60+(+(m[2]||0)), f=(+m[3])*60+(+(m[4]||0)); return (isNaN(i)||isNaN(f)||f<=i)?null:{ini:i,fim:f}; }
+      function row(id,o){ var r=document.getElementById(id), hv=r&&r.querySelector(".hv"); if(!hv) return; var t=String(o.txt||"").trim();
+        if(o.fechado||!t){ hv.textContent="Fechado"; hv.classList.add("off"); } else { hv.textContent=t; hv.classList.remove("off"); } }
+      row("hrowWeek",H.semana); row("hrowSat",H.sabado); row("hrowSun",H.domingo);
+      var n=new Date(), d=n.getDay(), mins=n.getHours()*60+n.getMinutes();
+      var hoje=(d>=1&&d<=5)?H.semana:(d===6)?H.sabado:H.domingo;
+      var def=(d>=1&&d<=5)?{ini:540,fim:1020}:(d===6)?{ini:540,fim:780}:null, aberto=false;
+      if(hoje && !hoje.fechado && String(hoje.txt||"").trim()){ var w=parse(hoje.txt)||def; if(w) aberto=(mins>=w.ini && mins<w.fim); }
+      var st=document.getElementById("introStatus"), tx=document.getElementById("introStatusTxt");
+      st.className="intro-status "+(aberto?"open":"closed")+" pronto"; tx.textContent=aberto?"Aberto agora":"Fechado no momento";
+      document.getElementById((d>=1&&d<=5)?"hrowWeek":(d===6)?"hrowSat":"hrowSun").classList.add("today");
+    }catch(e){}
+    var b=document.getElementById("introEnter");
+    if(b) b.addEventListener("click", function(){
+      var it=document.getElementById("intro"); it.classList.add("hide");
+      // tira a tela de entrada de vez depois do efeito: em celular lento ela podia ficar "fantasma" por cima do site
+      setTimeout(function(){ it.style.display="none"; }, 450);
+    });
+  })();
+  </script>
   <div class="page">
     <!-- ===== HEADER ===== -->
     <header>
@@ -669,7 +705,7 @@
 
       <!-- swap -->
       <div class="swapwrap">
-        <button class="swap" id="swap" aria-label="Inverter moedas">
+        <button class="swap" id="swap" aria-label="Inverter moedas"><span class="swap-disc" aria-hidden="true"></span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v13M4 7l3-3 3 3"></path><path d="M17 20V7M14 17l3 3 3-3"></path></svg>
         </button>
       </div>
@@ -933,7 +969,8 @@
     </div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- async: o site funciona na hora; a biblioteca só é necessária pro painel do dono e chega logo depois -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0" async id="sbLib"></script>
 <style>
 .cf-cloud-bar{margin:0 0 12px;display:flex;justify-content:center}
 .cf-badge{font-size:12px;display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border-radius:999px}
@@ -1130,7 +1167,7 @@
     var open=false;
     if(today && !today.fechado && String(today.txt||"").trim()){ var w=parseHoras(today.txt)||defWin; if(w) open=(mins>=w.ini && mins<w.fim); }
     var st=$("introStatus"), tx=$("introStatusTxt");
-    if(st&&tx){ if(open){ st.className="intro-status open"; tx.textContent="Aberto agora"; } else { st.className="intro-status closed"; tx.textContent="Fechado no momento"; } }
+    if(st&&tx){ if(open){ st.className="intro-status open pronto"; tx.textContent="Aberto agora"; } else { st.className="intro-status closed pronto"; tx.textContent="Fechado no momento"; } }
     ["hrowWeek","hrowSat","hrowSun"].forEach(function(id){ var r=$(id); if(r) r.classList.remove("today"); });
     var tid=(day>=1&&day<=5)?"hrowWeek":(day===6)?"hrowSat":"hrowSun"; var te=$(tid); if(te) te.classList.add("today");
     seoHorarios();
@@ -1760,7 +1797,10 @@
     cfPedidosPull();   // busca os pedidos sincronizados ao abrir o painel
   }
   // o painel agora abre com o LOGIN DA NUVEM (sem PIN local) — a senha é a mesma em todos os aparelhos
+  var cfAdminPronto=false;   // já sabemos se o dono está logado neste aparelho?
   function openAdmin(){
+    // se tocar na engrenagem antes de a biblioteca chegar, espera ela e confere a sessão (senão pediria login à toa)
+    if(!cfAdminPronto){ cfLibPronta.then(function(){ return cfRefreshUser(); }).then(function(){ cfAdminPronto=true; openAdmin(); }); return; }
     if(cfUser){ $("admOverlay").classList.add("show"); openAdminPanel(); }
     else { __openAdminAfterLogin=true; cfOpenLogin(); }
   }
@@ -1929,7 +1969,20 @@
   function cfPendSave(m){ try{ localStorage.setItem(CF_PEND_KEY,JSON.stringify(m)); }catch(e){} }
   function cfPendAdd(id,status){ var m=cfPendGet(); m[id]=status; cfPendSave(m); }
   function cfPendDel(id,status){ var m=cfPendGet(); if(m[id]===status||status==null){ delete m[id]; cfPendSave(m); } }
-  (function(){ try{ if(window.supabase&&window.supabase.createClient){ cfsb=window.supabase.createClient(CF_SB_URL,CF_SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"cambio_sb_auth"}}); } else { console.warn("Supabase (Câmbio): biblioteca ausente."); } }catch(e){ console.error("CF init",e); } })();
+  // A biblioteca carrega em paralelo (async). O cliente é criado assim que ela chegar.
+  function cfCriaCliente(){
+    if(cfsb) return true;
+    try{ if(window.supabase&&window.supabase.createClient){ cfsb=window.supabase.createClient(CF_SB_URL,CF_SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:"cambio_sb_auth"}}); } }catch(e){ console.error("CF init",e); }
+    return !!cfsb;
+  }
+  var cfLibPronta=new Promise(function(res){
+    if(cfCriaCliente()) return res(true);
+    var tag=document.getElementById("sbLib");
+    if(!tag) return res(false);
+    tag.addEventListener("load", function(){ res(cfCriaCliente()); });
+    tag.addEventListener("error", function(){ console.warn("Supabase (Câmbio): biblioteca não carregou"); res(false); });
+    setTimeout(function(){ res(cfCriaCliente()); }, 20000);
+  });
 
   function cfPushedGet(){ try{ return JSON.parse(localStorage.getItem(CF_PUSHED_KEY))||{}; }catch(e){ return {}; } }
   function cfPushedAdd(id){ var m=cfPushedGet(); m[id]=1; try{ localStorage.setItem(CF_PUSHED_KEY,JSON.stringify(m)); }catch(e){} }
@@ -2078,7 +2131,16 @@
   // ===== pedidos na nuvem (cambio_pedidos): cliente cria (anon), cambista gerencia (login) =====
   function pedidoToRow(p){ return { id:p.id, cliente:p.cliente||null, valor_reais:Number(p.valor_reais)||0, cotacao:Number(p.cotacao)||null, total_guarani:Number(p.total_guarani)||0, taxa_reais:Number(p.taxa_reais)||0, status:p.status||"pendente", observacao:p.observacao||null, created_at:p.created_at||new Date().toISOString() }; }
   function rowToPedido(r){ return { id:r.id, cliente:r.cliente||"", valor_reais:Number(r.valor_reais)||0, cotacao:Number(r.cotacao)||0, total_guarani:Number(r.total_guarani)||0, taxa_reais:Number(r.taxa_reais)||0, status:r.status||"pendente", observacao:r.observacao||"", created_at:r.created_at }; }
-  async function cfPedidoCloudInsert(p){ if(!cfReady()) return false; try{ var row=pedidoToRow(p); var res=await cfsb.from("cambio_pedidos").insert(row); if(res.error && cfIsAuthErr(res.error) && await cfRefreshSession()){ res=await cfsb.from("cambio_pedidos").insert(row); } if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoInsert",e); return false; } }
+  async function pedidoInsertDireto(row){
+    try{
+      var r=await comPrazo(fetch(CF_SB_URL+"/rest/v1/cambio_pedidos",{ method:"POST",
+        headers:{ apikey:CF_SB_KEY, Authorization:"Bearer "+CF_SB_KEY, "Content-Type":"application/json", Prefer:"return=minimal" },
+        body:JSON.stringify(row) }), 10000);
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      return true;
+    }catch(e){ console.error("pedidoDireto",e); return false; }
+  }
+  async function cfPedidoCloudInsert(p){ if(!cfReady()) await cfLibPronta; if(!cfReady()) return pedidoInsertDireto(pedidoToRow(p)); try{ var row=pedidoToRow(p); var res=await cfsb.from("cambio_pedidos").insert(row); if(res.error && cfIsAuthErr(res.error) && await cfRefreshSession()){ res=await cfsb.from("cambio_pedidos").insert(row); } if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoInsert",e); return false; } }
   async function cfPedidoCloudStatus(id,status){
     cfPendAdd(id,status);                       // só sai da fila quando a nuvem confirmar
     if(!cfReady()||!cfUser) return false;
@@ -2155,6 +2217,7 @@
   function cfCloseLogin(){ $("cfLoginOverlay").classList.remove("show"); }
   async function cfRefreshUser(){ if(!cfReady()) return; try{ var r=await cfsb.auth.getSession(); cfUser=(r.data&&r.data.session)?r.data.session.user:null; }catch(e){ cfUser=null; } cfBadge(); }
   async function cfDoLogin(){
+    if(!cfReady()){ $("cfLoginErr").textContent="Conectando…"; await cfLibPronta; $("cfLoginErr").textContent=""; }
     if(!cfReady()){ $("cfLoginErr").textContent="Supabase não carregou (sem internet?)"; return; }
     var email=($("cfLoginEmail").value||"").trim(), pass=$("cfLoginPass").value||"";
     if(!email||!pass){ $("cfLoginErr").textContent="Preencha e-mail e senha."; return; }
@@ -2201,7 +2264,8 @@
     cfBadge();
     renderCotStatus();            // até confirmar na nuvem, a cotação da tela é "não confirmada"
     cfDelivBackfill();            // registra delivery de pedidos já aprovados (local)
-    await cfCotacaoPull();        // público: cotação + config numa leitura só (sem login)
+    await cfCotacaoPull();        // público: cotação + config numa leitura só (sem login; vai direto na API se a biblioteca ainda não chegou)
+    await cfLibPronta; cfBadge(); // só o painel do dono precisa da biblioteca
     await cfRefreshUser();        // restaura sessão salva
     if(cfUser){ await cfPedidosPull(); renderResumo(); }
     try{ cfsb.auth.onAuthStateChange(function(_e,s){ cfUser=s?s.user:null; cfBadge(); }); }catch(e){}
@@ -2247,19 +2311,17 @@
   updatePickupVisibility();
   calc();
   renderAviso();   // banner de aviso (localStorage; a nuvem atualiza depois via cfConfigPull)
-  cfCloudInit();   // Fase 3: cotação pública da nuvem + sessão + operações
-
   // ---------- intro: horário de funcionamento ----------
   (function setupIntro(){
     var hl = document.querySelector(".logo");
     if(hl && hl.getAttribute("src")) $("introLogo").src = hl.getAttribute("src");
     renderIntro();
   })();
-  $("introEnter").addEventListener("click", function(){
-    var it=$("intro"); it.classList.add("hide");
-    // tira a tela de entrada de vez depois do efeito: em celular lento ela podia ficar "fantasma" por cima do site
-    setTimeout(function(){ it.style.display="none"; }, 450);
-  });
+  // o botão Entrar é ligado pelo script curto logo depois da tela de entrada (funciona antes de tudo carregar)
+
+  cfCloudInit();   // Fase 3: cotação pública da nuvem + sessão + operações
+
+
 })();
 </script>
 

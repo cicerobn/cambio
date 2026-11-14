@@ -46,6 +46,29 @@ Regras que não podem ser quebradas:
 - A mensagem do WhatsApp **não** leva cotação nem data (pedido do dono). Só leva uma linha
   de atenção quando a cotação não pôde ser confirmada.
 
+## Sincronização dos pedidos no painel (já derrubou a cotação do dono)
+
+O Supabase entrega no **máximo 1000 linhas por consulta**. Já houve um defeito em que o painel
+pedia 90 dias (quase 3 mil pedidos), recebia 1000 e reenviava o resto a cada minuto: 256 mil
+tentativas num dia, recusadas por já existirem. Isso entupia a internet do celular do dono e a
+cotação dele não confirmava. Regras:
+
+- Leitura sempre paginada (`range` de 1000 em 1000). Leitura completa = 40 dias (ao abrir o
+  painel e a cada 10 min); nas outras rodadas de 1 min, só 3 dias.
+- O aparelho guarda quais pedidos já estão na nuvem (`cfPedidosNaNuvem`). Só reenvia o que
+  nunca subiu, **um de cada vez, no máximo 10 por rodada**. Erro "duplicate key" (23505 / HTTP
+  409) conta como enviado. Nunca dispare gravações em massa em paralelo.
+- Pedido que estava na nuvem e sumiu foi apagado em outro aparelho: remove do aparelho, não
+  reenvia.
+- Para checar se voltou a acontecer: nos logs do Supabase (`edge_logs`), contar `POST` em
+  `cambio_pedidos` com status 409 por hora. Normal é perto de zero.
+
+## Publicar uma versão nova
+
+Troque `SITE_VERSAO` no `index.html` **e** o `versao.json` para o mesmo valor novo (ex.:
+`2026-11-15-1`). Quem está com o site aberto recarrega sozinho (uma vez por versão, nunca no meio
+de um pedido; o painel reabre). Sem isso, a correção só chega a quem fechar e abrir o site.
+
 ## Onde está no ar
 
 Domínio: **cambio-figueredo.com.br**

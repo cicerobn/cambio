@@ -2,7 +2,7 @@
 # o site muda cotação e taxas, e o cliente precisa receber sempre a versão nova.
 # Imagens e ícones, que quase não mudam, podem ficar guardados por um dia.
 <IfModule mod_headers.c>
-  <FilesMatch "\.html$">
+  <FilesMatch "(\.html|versao\.json)$">
     Header set Cache-Control "no-cache, must-revalidate"
   </FilesMatch>
   <FilesMatch "\.(png|svg|ico|xml|txt)$">

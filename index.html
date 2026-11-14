@@ -1794,7 +1794,7 @@
     syncSeg("filterSeg","f",pedFilter); syncSeg("periodSeg","p",resumoPeriod);
     cfBadge();
     renderPedidos();
-    cfPedidosPull();   // busca os pedidos sincronizados ao abrir o painel
+    cfPedidosPull(true);   // busca os pedidos sincronizados ao abrir o painel (leitura completa)
   }
   // o painel agora abre com o LOGIN DA NUVEM (sem PIN local) — a senha é a mesma em todos os aparelhos
   var cfAdminPronto=false;   // já sabemos se o dono está logado neste aparelho?
@@ -2136,11 +2136,27 @@
       var r=await comPrazo(fetch(CF_SB_URL+"/rest/v1/cambio_pedidos",{ method:"POST",
         headers:{ apikey:CF_SB_KEY, Authorization:"Bearer "+CF_SB_KEY, "Content-Type":"application/json", Prefer:"return=minimal" },
         body:JSON.stringify(row) }), 10000);
-      if(!r.ok) throw new Error("HTTP "+r.status);
+      if(!r.ok && r.status!==409) throw new Error("HTTP "+r.status);   // 409 = já está na nuvem
       return true;
     }catch(e){ console.error("pedidoDireto",e); return false; }
   }
-  async function cfPedidoCloudInsert(p){ if(!cfReady()) await cfLibPronta; if(!cfReady()) return pedidoInsertDireto(pedidoToRow(p)); try{ var row=pedidoToRow(p); var res=await cfsb.from("cambio_pedidos").insert(row); if(res.error && cfIsAuthErr(res.error) && await cfRefreshSession()){ res=await cfsb.from("cambio_pedidos").insert(row); } if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoInsert",e); return false; } }
+  // "duplicate key" = o pedido JÁ está na nuvem: não é erro, conta como enviado (e não se tenta de novo)
+  function cfJaExiste(e){ return !!e && (String(e.code)==="23505" || /duplicate key|already exists/i.test(String(e.message||""))); }
+  async function cfPedidoCloudInsert(p){
+    if(!cfReady()) await cfLibPronta;
+    var row=pedidoToRow(p), ok=false;
+    if(!cfReady()) ok=await pedidoInsertDireto(row);
+    else{
+      try{
+        var res=await cfsb.from("cambio_pedidos").insert(row);
+        if(res.error && cfIsAuthErr(res.error) && await cfRefreshSession()){ res=await cfsb.from("cambio_pedidos").insert(row); }
+        if(res.error && !cfJaExiste(res.error)) throw res.error;
+        ok=true;
+      }catch(e){ console.error("pedidoInsert",e); ok=false; }
+    }
+    if(ok) cfNuvemAdd([p.id]);
+    return ok;
+  }
   async function cfPedidoCloudStatus(id,status){
     cfPendAdd(id,status);                       // só sai da fila quando a nuvem confirmar
     if(!cfReady()||!cfUser) return false;
@@ -2160,27 +2176,59 @@
   }
   async function cfPedidoCloudDelete(id){ if(!cfReady()||!cfUser) return false; try{ var res=await cfsb.from("cambio_pedidos").delete().eq("id",id); if(res.error) throw res.error; return true; }catch(e){ console.error("pedidoDelete",e); return false; } }
   function pedidosSig(list){ var s="",i; for(i=0;i<list.length;i++){ s+=list[i].id+":"+list[i].status+";"; } return s; }
-  async function cfPedidosPull(){
-    if(!cfReady()||!cfUser) return;
+  // ===== sincronização dos pedidos (painel do dono) =====
+  // O banco entrega no MÁXIMO 1000 linhas por consulta. Antes o painel pedia 90 dias de uma vez
+  // (quase 3 mil pedidos), recebia só 1000 e achava que o resto "não estava na nuvem": tentava
+  // reenviar uns 3 mil pedidos A CADA MINUTO, todos recusados por já existirem (256 mil
+  // tentativas num dia). Isso entupia a internet do celular do dono e a cotação não conseguia
+  // ser confirmada nele ("erro na cotação").
+  // Agora: lê em páginas; lembra quais pedidos já estão na nuvem; só reenvia o que de fato nunca
+  // subiu, um de cada vez e no máximo 10 por rodada; "já existe" conta como enviado.
+  var CF_NUVEM_KEY="cfPedidosNaNuvem";
+  function cfNuvemGet(){ try{ return JSON.parse(localStorage.getItem(CF_NUVEM_KEY))||{}; }catch(e){ return {}; } }
+  function cfNuvemAdd(ids){ if(!ids||!ids.length) return; var m=cfNuvemGet(); ids.forEach(function(id){ m[id]=1; }); try{ localStorage.setItem(CF_NUVEM_KEY,JSON.stringify(m)); }catch(e){} }
+  var cfPullRodando=false, cfPullCompletoEm=0;
+  async function cfPedidosPull(forcaCompleto){
+    if(!cfReady()||!cfUser||cfPullRodando) return;
+    cfPullRodando=true;
     try{
       await cfPendFlush();   // primeiro manda o que ficou pendente daqui, depois lê
-      var _d=new Date(Date.now()-90*86400000), cut=_d.getFullYear()+"-"+pad2(_d.getMonth()+1)+"-"+pad2(_d.getDate());
-      var res=await cfsb.from("cambio_pedidos").select("id,cliente,valor_reais,cotacao,total_guarani,taxa_reais,status,observacao,created_at").gte("created_at",cut).order("created_at",{ascending:false}).range(0,4999);
-      if(res.error) throw res.error;
-      var pend=cfPendGet(), locais=pedidosLoad(), locById={};
+      // ao abrir o painel e a cada 10 min: 40 dias (cobre o Resumo do mês); nos outros minutos: só 3 dias (onde ficam os pendentes)
+      var completo = !!forcaCompleto || (Date.now()-cfPullCompletoEm) > 10*60000;
+      var dias = completo ? 40 : 3, cutMs = Date.now()-dias*86400000, cutISO = new Date(cutMs).toISOString();
+      var rows=[], off=0, pag;
+      for(pag=0; pag<15; pag++){
+        var res=await cfsb.from("cambio_pedidos").select("id,cliente,valor_reais,cotacao,total_guarani,taxa_reais,status,observacao,created_at")
+          .gte("created_at",cutISO).order("created_at",{ascending:false}).order("id",{ascending:true}).range(off, off+999);
+        if(res.error) throw res.error;
+        var d=res.data||[];
+        rows=rows.concat(d); off+=d.length;
+        if(d.length===0 || d.length<1000) break;   // última página
+      }
+      if(completo) cfPullCompletoEm=Date.now();
+      var pend=cfPendGet(), locais=pedidosLoad(), locById={}, visto={};
       locais.forEach(function(p){ locById[p.id]=p; });
-      var cloud=(res.data||[]).map(function(r){
+      var cloud=rows.map(function(r){
         var p=rowToPedido(r), loc=locById[p.id];
+        visto[p.id]=1;
         if(loc && loc.cloud_id) p.cloud_id=loc.cloud_id;   // não perde o vínculo com a operação (senão "Cancelar" não a removia)
         if(pend[p.id]) p.status=pend[p.id];                // status marcado aqui e ainda não confirmado não volta atrás
         return p;
       });
-      var seen={}; cloud.forEach(function(p){ seen[p.id]=1; });
-      var localOnly=locais.filter(function(p){ return !seen[p.id]; });
-      var nova=cloud.concat(localOnly);
+      cfNuvemAdd(Object.keys(visto));
+      var nuvem=cfNuvemGet(), ficam=[], subir=[];
+      locais.forEach(function(p){
+        if(visto[p.id]) return;                                       // acabou de vir da nuvem
+        var t=new Date(p.created_at).getTime();
+        if(!(t>=cutMs)){ ficam.push(p); return; }                     // fora do período lido: não mexe e não reenvia
+        if(nuvem[p.id]){ if(!rows.length) ficam.push(p); return; }    // estava na nuvem e sumiu = apagado em outro aparelho
+        ficam.push(p); subir.push(p);                                 // nunca subiu: mantém e envia
+      });
+      var nova=cloud.concat(ficam);
       if(pedidosSig(nova)!==pedidosSig(locais)){ pedidosSaveAll(nova); renderPedidos(); }   // só redesenha a lista se algo mudou
-      for(var i=0;i<localOnly.length;i++){ cfPedidoCloudInsert(localOnly[i]); }   // sobe os locais em segundo plano (sem segurar a tela)
+      for(var i=0;i<subir.length && i<10;i++){ await cfPedidoCloudInsert(subir[i]); }   // um de cada vez, nunca uma enxurrada
     }catch(e){ console.error("pedidosPull",e); }
+    finally{ cfPullRodando=false; }
   }
   // Excluir/cancelar/restaurar: a tela responde na hora; a nuvem é avisada em segundo plano.
   function cfDeleteOp(id){
@@ -2226,7 +2274,7 @@
     $("cfLoginGo").disabled=false;
     if(r.error){ $("cfLoginErr").textContent="Login falhou: "+r.error.message; return; }
     cfUser=r.data.user; cfBadge(); cfCloseLogin();
-    await cfPedidosPull(); renderPedidos();
+    await cfPedidosPull(true); renderPedidos();
     if(__openAdminAfterLogin){ __openAdminAfterLogin=false; $("admOverlay").classList.add("show"); openAdminPanel(); }
   }
   async function cfDoLogout(){ try{ await cfsb.auth.signOut(); }catch(e){} cfUser=null; cfBadge(); renderPedidos(); }
@@ -2267,7 +2315,8 @@
     await cfCotacaoPull();        // público: cotação + config numa leitura só (sem login; vai direto na API se a biblioteca ainda não chegou)
     await cfLibPronta; cfBadge(); // só o painel do dono precisa da biblioteca
     await cfRefreshUser();        // restaura sessão salva
-    if(cfUser){ await cfPedidosPull(); renderResumo(); }
+    if(cfUser){ await cfPedidosPull(true); renderResumo(); }
+    try{ if(sessionStorage.getItem("cfReabrirPainel")){ sessionStorage.removeItem("cfReabrirPainel"); if(cfUser){ cfAdminPronto=true; openAdmin(); } } }catch(e){}
     try{ cfsb.auth.onAuthStateChange(function(_e,s){ cfUser=s?s.user:null; cfBadge(); }); }catch(e){}
     // egress: enquanto o painel estiver aberto e a aba visível, atualiza os pedidos a cada 60s
     if(!window.__cfPedidosPoll){ window.__cfPedidosPoll=setInterval(function(){ try{ var ov=$("admOverlay"); if(cfUser && ov && ov.classList.contains("show") && document.visibilityState==='visible') cfPedidosPull(); }catch(e){} }, 60000); }
@@ -2275,13 +2324,33 @@
 
   // O cliente deixa a página aberta no celular por dias. Sem isto, ele seguiria vendo a
   // cotação de quando abriu: reconfere ao voltar pra tela e de tempos em tempos.
+  // ===== versão nova publicada: quem está com o site aberto recarrega sozinho =====
+  // Sem isto, uma correção publicada só chegava em quem fechasse e abrisse o site. Um celular com o
+  // painel aberto há dias continuava com o defeito antigo. Ao publicar, troque SITE_VERSAO aqui e
+  // em versao.json (os dois iguais). Recarrega no máximo uma vez por versão (nunca entra em loop),
+  // nunca no meio de um pedido ou de algo sendo digitado; se o painel estava aberto, ele reabre.
+  var SITE_VERSAO="2026-11-14-1";
+  async function confereVersao(){
+    try{
+      var r=await comPrazo(fetch("versao.json?t="+Date.now(),{cache:"no-store"}), 6000);
+      if(!r.ok) return;
+      var v=String(((await r.json())||{}).versao||"");
+      if(!v || v===SITE_VERSAO) return;
+      var k="cfRecarregouPara"; try{ if(sessionStorage.getItem(k)===v) return; }catch(e){ return; }
+      var foco=document.activeElement, digitando=foco && /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName);
+      if(digitando || $("orderOverlay").classList.contains("show") || $("cfLoginOverlay").classList.contains("show")) return;   // tenta na próxima
+      try{ sessionStorage.setItem(k,v); if($("admOverlay").classList.contains("show")) sessionStorage.setItem("cfReabrirPainel","1"); }catch(e){ return; }
+      location.reload();
+    }catch(e){}
+  }
+
   (function vigiaCotacao(){
     var ultima=Date.now();
     function revalida(forca){
       if(document.visibilityState!=="visible") return;
       var agora=Date.now();
       if(agora-ultima < (forca?15000:60000)) return;   // segura o tranco: no máximo 1 leitura por minuto
-      ultima=agora; cfCotacaoPull();
+      ultima=agora; cfCotacaoPull(); confereVersao();
     }
     document.addEventListener("visibilitychange", function(){ revalida(true); });
     window.addEventListener("focus", function(){ revalida(true); });

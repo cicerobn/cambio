@@ -958,7 +958,6 @@
   <div class="overlay" id="cfLoginOverlay">
     <div class="modal">
       <h3>Entrar na nuvem</h3>
-      <p>Login do Câmbio (Supabase) para salvar a cotação e as operações.</p>
       <label class="field-label">E-mail</label>
       <input class="input" id="cfLoginEmail" type="email" autocomplete="username">
       <label class="field-label">Senha</label>
@@ -2329,7 +2328,7 @@
   // painel aberto há dias continuava com o defeito antigo. Ao publicar, troque SITE_VERSAO aqui e
   // em versao.json (os dois iguais). Recarrega no máximo uma vez por versão (nunca entra em loop),
   // nunca no meio de um pedido ou de algo sendo digitado; se o painel estava aberto, ele reabre.
-  var SITE_VERSAO="2026-11-14-1";
+  var SITE_VERSAO="2026-11-18-1";
   async function confereVersao(){
     try{
       var r=await comPrazo(fetch("versao.json?t="+Date.now(),{cache:"no-store"}), 6000);

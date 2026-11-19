@@ -514,17 +514,20 @@
   .adm-hint{font-size:.72rem;color:var(--muted-2);margin:6px 2px 0;line-height:1.4}
 
   /* ===== intro: horário de funcionamento ===== */
-  .intro{position:fixed;inset:0;z-index:80;display:flex;overflow-y:auto;padding:20px;
+  .intro{position:fixed;inset:0;z-index:80;display:flex;overflow-y:auto;overflow-x:hidden;padding:20px;
     background:
       radial-gradient(900px 600px at 50% -6%, #16264a 0%, rgba(13,24,48,0) 58%),
       radial-gradient(760px 520px at 50% 112%, rgba(199,154,58,.07), transparent 60%),
       linear-gradient(180deg,#0e1a34 0%, #0b1428 58%, #091122 100%);
     transition:opacity .4s ease, visibility .4s ease}
   .intro.hide{opacity:0;visibility:hidden;pointer-events:none}
-  .intro-card{width:100%;max-width:420px;margin:auto;background:linear-gradient(180deg,#101e3c,#0c1730);
-    border:1px solid rgba(199,154,58,.18);border-radius:22px;padding:28px 22px 24px;text-align:center;
-    box-shadow:0 40px 80px -30px rgba(0,0,0,.72);animation:fadeUp .5s cubic-bezier(.2,.7,.3,1) both}
-  .intro-logo{display:block;width:122px;max-width:46%;height:auto;margin:0 auto 6px;
+  /* tela de entrada "vidro e luz": sem moldura, luz dourada atrás da logo, horários num bloco de vidro */
+  .intro-card{position:relative;width:100%;max-width:420px;margin:auto;padding:10px 20px;text-align:center;
+    animation:fadeUp .5s cubic-bezier(.2,.7,.3,1) both}
+  .intro-card::before{content:"";position:absolute;left:50%;top:-40px;width:min(420px,100vw);height:320px;transform:translateX(-50%);
+    background:radial-gradient(closest-side,rgba(216,173,74,.20),rgba(216,173,74,.06) 55%,transparent);pointer-events:none}
+  .intro-card>*{position:relative}
+  .intro-logo{display:block;width:150px;max-width:60%;height:auto;margin:0 auto 16px;
     filter:drop-shadow(0 8px 18px rgba(0,0,0,.45)) drop-shadow(0 0 18px rgba(199,154,58,.16))}
   .intro-title{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.4rem;
     color:var(--cream);letter-spacing:-.3px;margin-bottom:14px}
@@ -538,33 +541,31 @@
   .intro-bergan{display:block;width:50px;aspect-ratio:169/45;background:#d9cdb1;
     -webkit-mask:url(bergan.png) center/contain no-repeat;mask:url(bergan.png) center/contain no-repeat}
   .intro-status{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;border-radius:999px;border:1px solid;
-    font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.86rem;margin:12px 0 18px}
+    font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.86rem;margin:12px 0 24px}
   .intro-status .dot{width:9px;height:9px;border-radius:50%;flex:none}
   .intro-status.open{color:#34d17e;background:rgba(22,164,90,.12);border-color:rgba(22,164,90,.4)}
   .intro-status.open .dot{background:#22c46e;box-shadow:0 0 0 3px rgba(22,164,90,.18)}
   .intro-status.closed{color:#ff6b6b;background:rgba(214,69,47,.12);border-color:rgba(214,69,47,.38)}
   .intro-status.closed .dot{background:#ff5a5a;box-shadow:0 0 0 3px rgba(214,69,47,.16)}
-  .hours{display:grid;gap:10px;margin-bottom:20px}
-  .hrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:13px;
-    background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}
-  .hrow.today{border-color:rgba(199,154,58,.45);background:rgba(199,154,58,.08)}
+  .hours{display:grid;gap:0;margin-bottom:26px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);
+    border-radius:18px;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 20px 40px -24px rgba(0,0,0,.8)}
+  .hrow{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px}
+  .hrow+.hrow::before{content:"";position:absolute;left:18px;right:18px;top:0;height:1px;background:rgba(255,255,255,.07)}
+  .hrow.today .hd{color:#fff}
+  .hrow.today::after{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:#e0b552}
   .hrow .hd{font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;font-size:.95rem;color:#eef2f9}
   .hrow .hv{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.95rem;color:var(--gold-lt)}
   .hrow .hv.off{color:#7c89a6;font-weight:600}
-  .intro-enter{width:100%;border:0;border-radius:14px;padding:16px;cursor:pointer;
+  .intro-enter{width:100%;border:0;border-radius:16px;padding:16px;cursor:pointer;
     font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:1.05rem;color:#34270a;
     background:linear-gradient(180deg,#e9cd7c 0%, #c79a3a 52%, #ad7e23 100%);
-    box-shadow:0 16px 30px -14px rgba(199,154,58,.6);transition:transform .15s, box-shadow .2s}
-  .intro-enter:hover{transform:translateY(-1px);box-shadow:0 20px 34px -14px rgba(199,154,58,.72)}
+    box-shadow:0 18px 40px -14px rgba(216,173,74,.55);transition:transform .15s, box-shadow .2s}
+  .intro-enter:hover{transform:translateY(-1px);box-shadow:0 22px 44px -14px rgba(216,173,74,.68)}
   .intro-enter:active{transform:translateY(0)}
   @media (max-width:560px){
     .intro{padding:16px}
-    .intro-card{padding:24px 18px 20px;border-radius:20px}
-    .intro-logo{width:104px;margin-bottom:4px}
     .intro-title{font-size:1.24rem;margin-bottom:12px}
-    .intro-status{font-size:.8rem;margin-bottom:14px}
-    .hours{gap:8px;margin-bottom:16px}
-    .hrow{padding:12px 14px;border-radius:12px}
+    .intro-status{font-size:.8rem}
     .hrow .hd,.hrow .hv{font-size:.88rem}
     .intro-enter{padding:15px;font-size:1rem}
   }
@@ -2334,7 +2335,7 @@
   // painel aberto há dias continuava com o defeito antigo. Ao publicar, troque SITE_VERSAO aqui e
   // em versao.json (os dois iguais). Recarrega no máximo uma vez por versão (nunca entra em loop),
   // nunca no meio de um pedido ou de algo sendo digitado; se o painel estava aberto, ele reabre.
-  var SITE_VERSAO="2026-11-19-1";
+  var SITE_VERSAO="2026-11-19-2";
   async function confereVersao(){
     try{
       var r=await comPrazo(fetch("versao.json?t="+Date.now(),{cache:"no-store"}), 6000);

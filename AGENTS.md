@@ -14,6 +14,9 @@ Ao lado dele ficam só arquivos de apoio:
 
 - `logo.png` — a logo (também é a imagem do link compartilhado). Não volte a embutir em
   base64 no HTML: pesava 80 KB.
+- `bergan.png` — logo da Bergan (parceira), usada como máscara no "com Bergan" discreto da
+  tela de entrada; a cor vem do CSS. É uma versão pequena: trocar pela original em boa
+  qualidade quando o dono mandar.
 - `robots.txt` e `sitemap.xml` — para o Google.
 - `.htaccess` — faz o `index.html` nunca ficar preso no cache do navegador (a Hostinger
   respeita). Sem isso, correção publicada demora a chegar em quem já visitou.

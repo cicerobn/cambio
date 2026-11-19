@@ -532,6 +532,11 @@
   .intro-status{visibility:hidden}
   .intro-status.pronto{visibility:visible;animation:fadeIn .2s ease both}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  /* "com Bergan" discreto no pé da tela de entrada (a logo é uma máscara: a cor vem do CSS) */
+  .intro-parc{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:16px;opacity:.5}
+  .intro-parc>span:first-child{font-size:10.5px;font-weight:500;line-height:1;color:#b8a67e;letter-spacing:.3px}
+  .intro-bergan{display:block;width:50px;aspect-ratio:169/45;background:#d9cdb1;
+    -webkit-mask:url(bergan.png) center/contain no-repeat;mask:url(bergan.png) center/contain no-repeat}
   .intro-status{display:inline-flex;align-items:center;gap:8px;padding:7px 16px;border-radius:999px;border:1px solid;
     font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:.86rem;margin:12px 0 18px}
   .intro-status .dot{width:9px;height:9px;border-radius:50%;flex:none}
@@ -603,6 +608,7 @@
         <span class="cf-aviso-mini-txt" id="cfAvisoIntroTxt"></span>
       </div>
       <button class="intro-enter" id="introEnter" type="button">Entrar</button>
+      <div class="intro-parc"><span>com</span><span class="intro-bergan" role="img" aria-label="Bergan"></span></div>
     </div>
   </div>
   <script>
@@ -2328,7 +2334,7 @@
   // painel aberto há dias continuava com o defeito antigo. Ao publicar, troque SITE_VERSAO aqui e
   // em versao.json (os dois iguais). Recarrega no máximo uma vez por versão (nunca entra em loop),
   // nunca no meio de um pedido ou de algo sendo digitado; se o painel estava aberto, ele reabre.
-  var SITE_VERSAO="2026-11-18-1";
+  var SITE_VERSAO="2026-11-19-1";
   async function confereVersao(){
     try{
       var r=await comPrazo(fetch("versao.json?t="+Date.now(),{cache:"no-store"}), 6000);
